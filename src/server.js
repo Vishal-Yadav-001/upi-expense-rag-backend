@@ -1,5 +1,10 @@
 const express = require('express');
 const {ApolloServer,gql} = require("apollo-server-express");
+require('dotenv').config();
+
+// attempt to connect to the database
+const connectDB = require('./config/db');
+connectDB();
 
 const typeDefs = gql`
 type Query{
