@@ -20,3 +20,6 @@ build/
 # Uploads (PDFs)
 uploads/*
 !uploads/.gitkeep
+
+# Temporary files
+data/
