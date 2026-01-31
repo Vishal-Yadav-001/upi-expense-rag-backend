@@ -4,6 +4,8 @@ const { ApolloServer } = require("apollo-server-express");
 const User = require("./models/User");
 const { typeDefs, resolvers } = require("./graphql");
 const ingestUpiPdf = require("./services/upiIngestionService");
+const Transaction = require("./models/Transaction");
+const uploadRoutes = require("./routes/upload.routes");
 // attempt to connect to the database
 const connectDB = require("./config/db");
 connectDB();
@@ -13,19 +15,7 @@ async function startServer() {
   app.use(express.json());
 
   // Endpoint to ingest UPI PDF
-  app.post("/upload-upi-pdf", async (req, res) => {
-    try {
-      const filepath = "../src/data/sm_transactions_1769354327041.pdf";
-      const transactions = await ingestUpiPdf(filepath);
-      res.json({
-        count: transactions.length,
-        transactions,
-      });
-    } catch (error) {
-      console.error("Error ingesting UPI PDF:", error);
-      res.status(500).json({ error: "Failed to ingest UPI PDF" });
-    }
-  });
+  app.use("/api", uploadRoutes);
 
   const apolloServer = new ApolloServer({ typeDefs, resolvers });
   await apolloServer.start();
