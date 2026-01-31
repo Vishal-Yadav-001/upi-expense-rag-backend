@@ -1,4 +1,5 @@
 const ingestUpiPdf = require("../services/upiIngestionService");
+const Transaction = require("../models/Transaction");;
 
 exports.uploadUpiPdf = async (req, res) => {
   try {
@@ -9,6 +10,8 @@ exports.uploadUpiPdf = async (req, res) => {
     const filePath = "./src/data/sm_transactions_1769354327041.pdf";
 
     const transactions = await ingestUpiPdf(filePath);
+
+    await Transaction.insertMany(transactions);
 
     res.status(200).json({
       success: true,
