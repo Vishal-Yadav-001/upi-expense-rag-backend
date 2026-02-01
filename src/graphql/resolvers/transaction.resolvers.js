@@ -2,7 +2,7 @@ const Transaction = require("../../models/Transaction");
 
 const transactionResolvers = {
   Query: {
-     transactions: async (_, args) => {
+    transactions: async (_, args) => {
       const { status, direction, fromDate, toDate, limit = 50 } = args;
 
       const query = {};
@@ -17,13 +17,14 @@ const transactionResolvers = {
 
       if (fromDate || toDate) {
         query.date = {};
-        if (fromDate) query.date.$gte = fromDate;
-        if (toDate) query.date.$lte = toDate;
+        if (fromDate) query.date.$gte = new Date(fromDate);
+        if (toDate) query.date.$lte = new Date(toDate);
       }
 
       return Transaction.find(query)
         .sort({ date: -1 }) // latest first
-        .limit(limit);
+        .limit(limit)
+        .lean();
     },
   },
 };

@@ -24,4 +24,10 @@ const transactionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+transactionSchema.index(
+  { date: -1, status: 1, direction: 1 },
+  { name: "txn_date_status_direction_idx" }
+);
+
+
 module.exports = mongoose.model("Transaction", transactionSchema);

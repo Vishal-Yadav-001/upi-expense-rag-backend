@@ -16,7 +16,7 @@ const transactionTypeDefs = gql`
     id: ID!
     name: String
     bank: String
-    amount: Float
+    amount: Float!
     direction: TransactionDirection
     date: String
     status: TransactionStatus
