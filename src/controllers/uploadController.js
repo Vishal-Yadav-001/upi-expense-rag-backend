@@ -1,5 +1,6 @@
 const ingestUpiPdf = require("../services/upiIngestionService");
-const Transaction = require("../models/Transaction");;
+const Transaction = require("../models/Transaction");
+const Payee = require("../models/Payee");
 
 exports.uploadUpiPdf = async (req, res) => {
   try {
@@ -11,6 +12,27 @@ exports.uploadUpiPdf = async (req, res) => {
 
     const transactions = await ingestUpiPdf(filePath);
 
+    const transactionsToInsert = [];
+
+    for (const tx of transactions) {
+      // Try to find existing Payee by normalized name
+      let payee = await Payee.findByRawName(tx.name);
+      // If not found, create a new Payee
+      if (!payee) {
+        payee = await Payee.create({
+          displayName: tx.name,
+          normalizedName: tx.name,
+          category: "UNCATEGORIZED",
+          confidence: 0.3,
+        });
+      }
+      // Attach Payee refrence to Transaction
+      transactionsToInsert.push({
+        ...tx,
+        payee: payee._id,
+      });
+    }
+    // Bulk insert transactions with Payee references
     await Transaction.insertMany(transactions);
 
     res.status(200).json({

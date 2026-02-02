@@ -20,6 +20,11 @@ const transactionSchema = new mongoose.Schema(
       type: String,
       default: "UPI_PDF",
     },
+    payee:{
+      type:mongoose.Schema.Types.ObjectId,
+      ref:"Payee",
+      index:true
+    }
   },
   { timestamps: true }
 );
