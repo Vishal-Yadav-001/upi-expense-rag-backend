@@ -33,7 +33,7 @@ exports.uploadUpiPdf = async (req, res) => {
       });
     }
     // Bulk insert transactions with Payee references
-    await Transaction.insertMany(transactions);
+    await Transaction.insertMany(transactionsToInsert);
 
     res.status(200).json({
       success: true,

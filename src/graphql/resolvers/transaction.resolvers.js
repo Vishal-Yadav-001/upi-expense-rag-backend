@@ -1,4 +1,5 @@
 const Transaction = require("../../models/Transaction");
+const Payee = require("../../models/Payee");
 
 const transactionResolvers = {
   Query: {
@@ -25,6 +26,27 @@ const transactionResolvers = {
         .sort({ date: -1 }) // latest first
         .limit(limit)
         .lean();
+    },
+    transactionsByPayee: async (_, { payeeId, payeeName }) => {
+      let resolvedPayeeId = payeeId;
+
+      // 1. If no ID, attempt to resolve the name to an ID
+      if (!resolvedPayeeId && payeeName) {
+        const payee = await Payee.findByRawName(payeeName);
+        if (!payee) return []; // Return empty if name doesn't exist
+        resolvedPayeeId = payee._id;
+      }
+
+      // 2. Validate we have a target for the search
+      if (!resolvedPayeeId) {
+        throw new Error("Either payeeId or a valid payeeName must be provided");
+      }
+
+      // 3. Execute query with index-backed search and sorting
+      return await Transaction.find({ payee: resolvedPayeeId })
+        .populate("payee")
+        .sort({ date: -1 })
+        .lean(); 
     },
   },
 };

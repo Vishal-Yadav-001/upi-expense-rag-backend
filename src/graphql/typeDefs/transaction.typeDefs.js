@@ -12,6 +12,13 @@ const transactionTypeDefs = gql`
     UNKNOWN
   }
 
+  type Payee {
+    id: ID!
+    displayName: String!
+    category: String
+    confidence: Float
+  }
+
   type Transaction {
     id: ID!
     name: String
@@ -21,6 +28,7 @@ const transactionTypeDefs = gql`
     date: String
     status: TransactionStatus
     createdAt: String
+    payee: Payee
   }
 
   type Query {
@@ -31,6 +39,7 @@ const transactionTypeDefs = gql`
       toDate: String
       limit: Int
     ): [Transaction]
+    transactionsByPayee(payeeId: ID, payeeName: String): [Transaction!]!
   }
 `;
 
