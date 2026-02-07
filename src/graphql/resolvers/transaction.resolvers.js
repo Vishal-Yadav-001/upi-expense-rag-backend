@@ -47,7 +47,7 @@ const transactionResolvers = {
         .populate("payee")
         .sort({ date: -1 })
         .limit(limit)
-        .lean();
+        .lean({ virtuals: true });
     },
   },
 };
