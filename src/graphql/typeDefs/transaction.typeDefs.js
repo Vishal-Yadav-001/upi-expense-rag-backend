@@ -39,7 +39,12 @@ const transactionTypeDefs = gql`
       toDate: String
       limit: Int
     ): [Transaction]
-    transactionsByPayee(payeeId: ID, payeeName: String): [Transaction!]!
+
+    transactionsByPayee(
+      payeeId: ID
+      payeeName: String
+      limit: Int
+    ): [Transaction!]!
   }
 `;
 

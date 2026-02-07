@@ -27,7 +27,7 @@ const transactionResolvers = {
         .limit(limit)
         .lean();
     },
-    transactionsByPayee: async (_, { payeeId, payeeName }) => {
+    transactionsByPayee: async (_, { payeeId, payeeName, limit = 50 }) => {
       let resolvedPayeeId = payeeId;
 
       // 1. If no ID, attempt to resolve the name to an ID
@@ -43,10 +43,11 @@ const transactionResolvers = {
       }
 
       // 3. Execute query with index-backed search and sorting
-      return await Transaction.find({ payee: resolvedPayeeId })
+      return Transaction.find({ payee: resolvedPayeeId })
         .populate("payee")
         .sort({ date: -1 })
-        .lean(); 
+        .limit(limit)
+        .lean();
     },
   },
 };
