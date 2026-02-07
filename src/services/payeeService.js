@@ -34,31 +34,27 @@ async function resolvePayee(rawName) {
 /**
  * Update confidence based on signal
  */
-async function updatePayeeConfidence(
-  payee,
-  category,
-  signal = "AUTO"
-) {
+async function updatePayeeConfidence(payee, category, signal = "AUTO") {
   let increment = 0;
+
+  // Only boost if category is new or changed
+  const categoryChanged = category && payee.category !== category;
 
   switch (signal) {
     case "AUTO":
-      increment = 0.05;
+      increment = categoryChanged ? 0.1 : 0;
       break;
     case "CATEGORY_MATCH":
-      increment = 0.15;
+      increment = categoryChanged ? 0.15 : 0;
       break;
     case "USER_CONFIRMED":
-      increment = 0.3;
+      increment = categoryChanged ? 0.3 : 0;
       break;
-    default:
-      increment = 0;
   }
 
-  payee.confidence = Math.min(0.95, payee.confidence + increment);
-
-  if (category) {
+  if (categoryChanged) {
     payee.category = category;
+    payee.confidence = Math.min(0.95, payee.confidence + increment);
   }
 
   await payee.save();
