@@ -37,6 +37,56 @@ async function totalSpendByCategory({ fromDate, toDate }) {
   ]);
 }
 
+async function monthlySpend({ fromDate, toDate }) {
+  const match = {
+    direction: "DEBIT",
+    status: "SUCCESS",
+  };
+
+  if (fromDate || toDate) {
+    match.date = {};
+    if (fromDate) match.date.$gte = new Date(fromDate);
+    if (toDate) match.date.$lte = new Date(toDate);
+  }
+
+  return Transaction.aggregate([
+    { $match: match },
+
+    {
+      $group: {
+        _id: {
+          year: { $year: "$date" },
+          month: { $month: "$date" },
+        },
+        total: { $sum: "$amount" },
+      },
+    },
+
+    {
+      $project: {
+        _id: 0,
+        month: {
+          $concat: [
+            { $toString: "$_id.year" },
+            "-",
+            {
+              $cond: [
+                { $lt: ["$_id.month", 10] },
+                { $concat: ["0", { $toString: "$_id.month" }] },
+                { $toString: "$_id.month" },
+              ],
+            },
+          ],
+        },
+        total: 1,
+      },
+    },
+
+    { $sort: { month: 1 } },
+  ]);
+}
+
 module.exports = {
   totalSpendByCategory,
+  monthlySpend,
 };
