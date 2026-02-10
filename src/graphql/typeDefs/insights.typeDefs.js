@@ -22,7 +22,7 @@ type SubscriptionInsight {
       direction: TransactionDirection = DEBIT
     ): [RecurringPayee!]!
 
-    detectSubscriptions(limit:Int = 10): [SubscriptionInsight!]!
+    detectSubscriptions(limit: Int = 10): [SubscriptionInsight!]!
   }
 `;
 

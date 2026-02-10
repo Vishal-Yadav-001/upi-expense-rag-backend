@@ -87,24 +87,19 @@ async function monthlySpend({ fromDate, toDate }) {
 }
 
 function detectFrequency(dates) {
-  if (dates.length < 3) return null; // Not enough data to determine frequency
+  if (dates.length < 3) return null;
+
   const intervals = [];
-
-  function detectFrequency(dates) {
-    if (dates.length < 3) return null;
-
-    const intervals = [];
-    for (let i = 1; i < dates.length; i++) {
-      const diffDays = (dates[i] - dates[i - 1]) / (1000 * 60 * 60 * 24);
-      intervals.push(diffDays);
-    }
-
-    const avg = intervals.reduce((a, b) => a + b, 0) / intervals.length;
-
-    if (avg > 27 && avg < 32) return "MONTHLY";
-    if (avg > 6 && avg < 8) return "WEEKLY";
-    return null;
+  for (let i = 1; i < dates.length; i++) {
+    const diffDays = (dates[i] - dates[i - 1]) / (1000 * 60 * 60 * 24);
+    intervals.push(diffDays);
   }
+
+  const avg = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+
+  if (avg > 27 && avg < 32) return "MONTHLY";
+  if (avg > 6 && avg < 8) return "WEEKLY";
+  return null;
 }
 
 module.exports = {
