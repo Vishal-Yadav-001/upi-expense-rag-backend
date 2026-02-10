@@ -1,4 +1,5 @@
 const Transaction = require("../../models/Transaction");
+const { detectFrequency } = require("../../services/analyticsService");
 
 const insightsResolvers = {
   Query: {
@@ -36,6 +37,60 @@ const insightsResolvers = {
         { $unwind: "$payee" },
       ]);
     },
+
+detectSubscriptions: async (_, { limit = 10 }) => {
+  const grouped = await Transaction.aggregate([
+    {
+      $match: {
+        direction: "DEBIT",
+        payee: { $ne: null },
+      },
+    },
+    {
+      $group: {
+        _id: "$payee",
+        // LINKED: Pushing an object instead of two separate arrays
+        history: { 
+          $push: { date: "$date", amount: "$amount" } 
+        },
+        count: { $sum: 1 },
+        lastPaidAt: { $max: "$date" },
+      },
+    },
+    { $match: { count: { $gte: 3 } } },
+    { $limit: limit },
+  ]);
+
+  const results = [];
+
+  for (const g of grouped) {
+    // SORTING: Now sort the history objects by their date property
+    const sortedHistory = g.history.sort(
+      (a, b) => new Date(a.date) - new Date(b.date)
+    );
+
+    // Extract only the dates for the detector
+    const dates = sortedHistory.map(h => h.date);
+    const frequency = detectFrequency(dates);
+
+    if (!frequency) continue;
+
+    // Use the correctly linked amounts for the average
+    const avgAmount =
+      g.history.reduce((sum, item) => sum + item.amount, 0) / g.count;
+
+    results.push({
+      payee: g._id,
+      frequency,
+      avgAmount,
+      lastPaidAt: g.lastPaidAt,
+      confidence: Math.min(0.9, g.count / 6),
+    });
+  }
+
+  return results;
+}
+
   },
 };
 

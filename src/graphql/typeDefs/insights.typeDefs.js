@@ -8,11 +8,21 @@ const insightsTypeDefs = gql`
     lastPaidAt: String
   }
 
+type SubscriptionInsight {
+  payee: Payee!
+  frequency: String!
+  avgAmount: Float!
+  lastPaidAt: String
+  confidence: Float!
+}
+
   extend type Query {
     topRecurringPayees(
       limit: Int = 10
       direction: TransactionDirection = DEBIT
     ): [RecurringPayee!]!
+
+    detectSubscriptions(limit:Int = 10): [SubscriptionInsight!]!
   }
 `;
 
