@@ -3,6 +3,10 @@ const { detectFrequency } = require("../../services/analyticsService");
 
 const insightsResolvers = {
   Query: {
+    /**
+     * Returns the most frequent payees for a transaction direction.
+     * Aggregates count, total spent, and most recent payment date.
+     */
     topRecurringPayees: async (_, { limit = 10, direction }) => {
       return Transaction.aggregate([
         {
@@ -38,6 +42,10 @@ const insightsResolvers = {
       ]);
     },
 
+    /**
+     * Detects recurring debit patterns that likely represent subscriptions.
+     * Computes frequency, average amount, confidence, and optional price drift.
+     */
     detectSubscriptions: async (_, { limit = 10 }) => {
       const grouped = await Transaction.aggregate([
         {
@@ -165,6 +173,10 @@ const insightsResolvers = {
       return results;
     },
 
+    /**
+     * Predicts upcoming monthly subscription charges within a time window.
+     * Uses historical debit cadence to estimate the next expected payment date.
+     */
     upcomingSubscriptions: async (_, { days = 10 }) => {
       const today = new Date();
       const thresholdDate = new Date();
