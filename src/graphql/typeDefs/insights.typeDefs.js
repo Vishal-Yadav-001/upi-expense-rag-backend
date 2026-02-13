@@ -8,14 +8,21 @@ const insightsTypeDefs = gql`
     lastPaidAt: String
   }
 
-type SubscriptionInsight {
-  payee: Payee!
-  frequency: String!
-  avgAmount: Float!
-  lastPaidAt: String
-  confidence: Float!
-  priceChange:Float
-}
+  type SubscriptionInsight {
+    payee: Payee!
+    frequency: String!
+    avgAmount: Float!
+    lastPaidAt: String
+    confidence: Float!
+    priceChange: Float
+  }
+
+  type UpcomingSubscription {
+    payee: Payee!
+    expectedDate: String!
+    avgAmount: Float!
+    confidence: Float!
+  }
 
   extend type Query {
     topRecurringPayees(
@@ -24,6 +31,7 @@ type SubscriptionInsight {
     ): [RecurringPayee!]!
 
     detectSubscriptions(limit: Int = 10): [SubscriptionInsight!]!
+    upcomingSubscriptions(days: Int = 10): [UpcomingSubscription!]!
   }
 `;
 
