@@ -14,6 +14,7 @@ type SubscriptionInsight {
   avgAmount: Float!
   lastPaidAt: String
   confidence: Float!
+  priceChange:Float
 }
 
   extend type Query {
