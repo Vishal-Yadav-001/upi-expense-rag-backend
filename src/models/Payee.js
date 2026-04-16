@@ -9,9 +9,18 @@ const payeeSchema = new mongoose.Schema(
 
     normalizedName: {
       type: String,
-      required: true,
       index: true,
-      set: v => v.toLowerCase().replace(/\s+/g, " ").trim()
+      set: (v) => {
+        if (!v) return undefined;
+        return v.toLowerCase().replace(/\s+/g, " ").trim();
+      },
+    },
+
+    hashedName: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
     },
 
     aliases: {
@@ -35,15 +44,11 @@ const payeeSchema = new mongoose.Schema(
       default: "UPI_PDF",
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
-
 payeeSchema.statics.findByRawName = function (name) {
-  const normalized = name
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
+  const normalized = name.toLowerCase().replace(/\s+/g, " ").trim();
 
   return this.findOne({ normalizedName: normalized });
 };

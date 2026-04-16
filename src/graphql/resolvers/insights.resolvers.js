@@ -12,6 +12,7 @@ const insightsResolvers = {
         {
           $match: {
             direction,
+            status: "SUCCESS",
             payee: { $ne: null },
           },
         },
@@ -51,6 +52,7 @@ const insightsResolvers = {
         {
           $match: {
             direction: "DEBIT",
+            status: "SUCCESS",
             payee: { $ne: null },
           },
         },
@@ -65,7 +67,15 @@ const insightsResolvers = {
           },
         },
         { $match: { count: { $gte: 3 } } },
-        { $limit: limit },
+        {
+          $lookup: {
+            from: "payees",
+            localField: "_id",
+            foreignField: "_id",
+            as: "payee",
+          },
+        },
+        { $unwind: "$payee" },
       ]);
 
       const results = [];
@@ -161,7 +171,7 @@ const insightsResolvers = {
           countScore * 0.4 + frequencyScore * 0.4 + amountScore * 0.2;
 
         results.push({
-          payee: g._id,
+          payee: g.payee,
           frequency,
           avgAmount: parseFloat(avgAmount.toFixed(2)),
           lastPaidAt: g.lastPaidAt,
@@ -170,7 +180,7 @@ const insightsResolvers = {
         });
       }
 
-      return results;
+      return results.slice(0, limit);
     },
 
     /**
@@ -186,6 +196,7 @@ const insightsResolvers = {
         {
           $match: {
             direction: "DEBIT",
+            status: "SUCCESS",
             payee: { $ne: null },
           },
         },
@@ -200,6 +211,15 @@ const insightsResolvers = {
           },
         },
         { $match: { count: { $gte: 3 } } },
+        {
+          $lookup: {
+            from: "payees",
+            localField: "_id",
+            foreignField: "_id",
+            as: "payee",
+          },
+        },
+        { $unwind: "$payee" },
       ]);
 
       const results = [];
@@ -232,7 +252,7 @@ const insightsResolvers = {
             sortedHistory.length;
 
           results.push({
-            payee: g._id,
+            payee: g.payee,
             expectedDate: expectedDate.toISOString(),
             avgAmount: parseFloat(avgAmount.toFixed(2)),
             confidence: 0.8, // reuse confidence logic later if needed

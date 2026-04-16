@@ -20,6 +20,21 @@ const transactionSchema = new mongoose.Schema(
       type: String,
       default: "UPI_PDF",
     },
+    sourceHash: {
+      type: String,
+      required: true,
+      index: true,
+    },
+    importBatchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ImportBatch",
+      index: true,
+    },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      index: true,
+    },
     payee:{
       type:mongoose.Schema.Types.ObjectId,
       ref:"Payee",
@@ -32,6 +47,10 @@ const transactionSchema = new mongoose.Schema(
 transactionSchema.index(
   { date: -1, status: 1, direction: 1 },
   { name: "txn_date_status_direction_idx" }
+);
+transactionSchema.index(
+  { sourceHash: 1 },
+  { name: "txn_source_hash_unique", unique: true }
 );
 
 

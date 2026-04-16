@@ -3,6 +3,22 @@ const monthMap = {
   May: "05", June: "06", July: "07", August: "08",
   September: "09", October: "10", November: "11", December: "12",
 };
+const crypto = require("crypto");
+
+function hashName(rawName) {
+  const normalized = rawName.toLowerCase().replace(/\s+/g, " ").trim();
+  return crypto.createHash("sha256").update(normalized).digest("hex");
+}
+
+function maskName(rawName) {
+  const parts = rawName.split(/\s+/).filter(Boolean);
+  return parts
+    .map((part) => {
+      const first = part[0] || "";
+      return first ? `${first}${"*".repeat(Math.max(1, part.length - 1))}` : "*";
+    })
+    .join(" ");
+}
 
 function parseTransactions(rawText) {
   if (!rawText) return [];
@@ -36,8 +52,14 @@ function parseTransactions(rawText) {
       direction = "CREDIT";
     }
 
+    // We keep a stable hashed identity for joins/dedupe and a masked label for safe display.
+    const hashedName = `PAYEE_${hashName(cleanName).slice(0, 12)}`;
+    const maskedName = maskName(cleanName);
+
     results.push({
-      name: cleanName,
+      name: maskedName,
+      rawName: cleanName,
+      hashedName,
       amount: parseFloat(g.amount),
       direction: direction,
       date: `${g.year}-${monthMap[g.month]}-${g.day.padStart(2, "0")}`,

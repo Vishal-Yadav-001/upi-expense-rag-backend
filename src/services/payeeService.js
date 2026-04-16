@@ -7,25 +7,33 @@ function normalizeName(name) {
   return name.toLowerCase().replace(/\s+/g, " ").trim();
 }
 
+function maskName(name) {
+  const parts = name.split(/\s+/).filter(Boolean);
+  return parts
+    .map((part) => {
+      const first = part[0] || "";
+      return first ? `${first}${"*".repeat(Math.max(1, part.length - 1))}` : "*";
+    })
+    .join(" ");
+}
+
 /**
  * Find or create payee
  * AUTO learning happens here
  */
-async function resolvePayee(rawName) {
-  const normalized = normalizeName(rawName);
-
-  let payee = await Payee.findOne({ normalizedName: normalized });
+async function resolvePayee({ rawName, hashedName }) {
+  let payee = await Payee.findOne({ hashedName });
 
   if (!payee) {
+    const storePii = process.env.STORE_PII === "true";
+    const displayName = storePii ? rawName : maskName(rawName);
+    const normalizedName = storePii ? normalizeName(rawName) : undefined;
     payee = await Payee.create({
-      displayName: rawName,
-      normalizedName: normalized,
+      displayName,
+      normalizedName,
+      hashedName,
       confidence: 0.3, // base confidence
     });
-  } else {
-    // small auto-learning bump for recurring usage
-    payee.confidence = Math.min(0.7, payee.confidence + 0.05);
-    await payee.save();
   }
 
   return payee;
@@ -65,4 +73,5 @@ module.exports = {
   resolvePayee,
   updatePayeeConfidence,
   normalizeName, // useful for GraphQL later
+  maskName,
 };

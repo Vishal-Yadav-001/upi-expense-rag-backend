@@ -46,7 +46,15 @@ const transactionResolvers = {
       return Transaction.find({ payee: resolvedPayeeId })
         .populate("payee")
         .sort({ date: -1 })
-        .limit(limit)
+        .limit(limit);
+    },
+  },
+  Transaction: {
+    id: (doc) => (doc && doc._id ? doc._id.toString() : null),
+    payee: async (doc) => {
+      if (!doc || !doc.payee) return null;
+      if (doc.payee.displayName) return doc.payee;
+      return Payee.findById(doc.payee);
     },
   },
 };

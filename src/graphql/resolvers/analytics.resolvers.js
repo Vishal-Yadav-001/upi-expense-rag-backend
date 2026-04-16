@@ -1,4 +1,4 @@
-const { totalSpendByCategory,monthlySpend } = require("../../services/analyticsService");
+const { totalSpendByCategory, monthlySpend } = require("../../services/analyticsService");
 
 const analyticsResolvers = {
   Query: {
@@ -9,7 +9,6 @@ const analyticsResolvers = {
     monthlySpend: async (_, args) => {
       return monthlySpend(args);
     },
-  
   },
 };
 

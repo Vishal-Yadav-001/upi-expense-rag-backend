@@ -1,17 +1,15 @@
-require("dotenv").config(); // 1. Load env vars first
+require("dotenv").config(); // Load env vars first
 const express = require("express");
+const cors = require("cors");
 const { ApolloServer } = require("apollo-server-express");
-const User = require("./models/User");
 const { typeDefs, resolvers } = require("./graphql");
-const ingestUpiPdf = require("./services/upiIngestionService");
-const Transaction = require("./models/Transaction");
 const uploadRoutes = require("./routes/upload.routes");
-// attempt to connect to the database
 const connectDB = require("./config/db");
-connectDB();
 
 async function startServer() {
+  await connectDB();
   const app = express();
+  app.use(cors());
   app.use(express.json());
 
   // Endpoint to ingest UPI PDF
@@ -23,8 +21,8 @@ async function startServer() {
 
   const PORT = process.env.PORT || 4000;
   app.listen(PORT, () => {
-    console.log(`🚀 REST API: http://localhost:${PORT}/upload-upi-pdf`);
-    console.log(`🚀 GraphQL:  http://localhost:${PORT}/graphql`);
+    console.log(`REST API:  http://localhost:${PORT}/api/upload-upi-pdf`);
+    console.log(`GraphQL:   http://localhost:${PORT}/graphql`);
   });
 }
 

@@ -15,6 +15,8 @@ const transactionTypeDefs = gql`
   type Payee {
     id: ID!
     displayName: String!
+    hashedName: String
+    normalizedName: String
     category: String
     confidence: Float
   }

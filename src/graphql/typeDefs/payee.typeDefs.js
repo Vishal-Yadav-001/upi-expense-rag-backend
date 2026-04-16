@@ -4,7 +4,8 @@ const payeeTypeDefs = gql`
   type Payee {
     id: ID!
     displayName: String!
-    normalizedName: String!
+    hashedName: String
+    normalizedName: String
     aliases: [String]
     category: String
     confidence: Float
