@@ -15,6 +15,10 @@ const importBatchSchema = new mongoose.Schema(
       enum: ["PENDING", "COMPLETED", "FAILED"],
       default: "PENDING",
     },
+    duplicateHashes: {
+      type: [String],
+      default: [],
+    },
     errorMessage: { type: String },
   },
   { timestamps: true }

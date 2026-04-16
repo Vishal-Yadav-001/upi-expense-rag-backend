@@ -11,6 +11,7 @@ const importBatchTypeDefs = gql`
     importedCount: Int!
     skippedCount: Int!
     status: String!
+    duplicateHashes: [String!]!
     errorMessage: String
     createdAt: String!
     updatedAt: String!

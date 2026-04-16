@@ -87,6 +87,8 @@ exports.uploadUpiPdf = async (req, res) => {
     }
 
     const ops = [];
+    const uploadHashCounts = new Map();
+    const hashPreviewMap = new Map();
     let processed = 0;
     const progressInterval = Math.max(10, Math.floor(transactions.length / 5));
 
@@ -96,6 +98,16 @@ exports.uploadUpiPdf = async (req, res) => {
         throw new Error(`Payee resolution failed for ${tx.hashedName}`);
       }
       const sourceHash = buildSourceHash(tx, payee._id);
+      uploadHashCounts.set(sourceHash, (uploadHashCounts.get(sourceHash) || 0) + 1);
+      if (!hashPreviewMap.has(sourceHash)) {
+        hashPreviewMap.set(sourceHash, {
+          name: tx.name,
+          amount: tx.amount,
+          date: tx.date,
+          status: tx.status,
+          direction: tx.direction,
+        });
+      }
 
       // Never persist the raw payee name unless PII storage is explicitly enabled.
       const sanitizedTx = { ...tx };
@@ -125,6 +137,25 @@ exports.uploadUpiPdf = async (req, res) => {
       }
     }
 
+    const duplicateHashesInUpload = [...uploadHashCounts.entries()]
+      .filter(([, count]) => count > 1)
+      .map(([hash, count]) => ({
+        sourceHash: hash,
+        occurrences: count,
+        preview: hashPreviewMap.get(hash),
+      }));
+
+    if (duplicateHashesInUpload.length > 0) {
+      console.log("[upload] Duplicate source hashes found inside this PDF:", duplicateHashesInUpload);
+    }
+
+    const existingHashes = await Transaction.find(
+      { sourceHash: { $in: [...uploadHashCounts.keys()] } },
+      { sourceHash: 1, _id: 0 }
+    ).lean();
+    const existingHashSet = new Set(existingHashes.map((doc) => doc.sourceHash));
+    console.log("[upload] Existing transaction hashes already in DB:", existingHashSet.size);
+
     const bulkResult = ops.length
       ? await Transaction.bulkWrite(ops, { ordered: false })
       : { upsertedCount: 0 };
@@ -134,6 +165,7 @@ exports.uploadUpiPdf = async (req, res) => {
     batch.importedCount = importedCount;
     batch.skippedCount = skippedCount;
     batch.status = "COMPLETED";
+    batch.duplicateHashes = duplicateHashesInUpload.map((item) => item.sourceHash);
     await batch.save();
 
     console.log("[upload] Bulk write complete:", {
@@ -147,12 +179,15 @@ exports.uploadUpiPdf = async (req, res) => {
       parsedCount: batch.parsedCount,
       importedCount: batch.importedCount,
       skippedCount: batch.skippedCount,
+      duplicateHashes: batch.duplicateHashes.length,
     });
 
     res.status(200).json({
       success: true,
       imported: importedCount,
       skipped: skippedCount,
+      duplicateHashesInUpload: duplicateHashesInUpload,
+      existingHashesInDb: existingHashSet.size,
       totalParsed: transactions.length,
       importBatchId: batch._id,
       message: "UPI PDF ingested successfully",
