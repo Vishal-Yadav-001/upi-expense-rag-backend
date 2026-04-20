@@ -34,6 +34,19 @@ const payeeSchema = new mongoose.Schema(
       index: true,
     },
 
+    payeeType: {
+      type: String,
+      enum: ["P2P", "P2M", "UNKNOWN"],
+      default: "UNKNOWN",
+      index: true,
+    },
+
+    metadata: {
+      vpa: String,
+      phone: String,
+      isVerifiedMerchant: Boolean,
+    },
+
     confidence: {
       type: Number,
       default: 0.3, // low confidence initially

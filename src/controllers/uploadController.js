@@ -1,22 +1,9 @@
-const crypto = require("crypto");
+const { generateTransactionHash } = require("../utils/cryptoUtils");
 const ingestUpiPdf = require("../services/upiIngestionService");
 const Transaction = require("../models/Transaction");
 const ImportBatch = require("../models/ImportBatch");
 const Payee = require("../models/Payee");
 const { maskName, normalizeName } = require("../services/payeeService");
-
-function buildSourceHash(tx, payeeId) {
-  // Keep this fingerprint stable across re-imports so duplicate statements stay idempotent.
-  const payload = [
-    tx.hashedName || tx.name,
-    tx.amount,
-    tx.direction,
-    tx.date,
-    tx.status,
-    payeeId ? payeeId.toString() : "",
-  ].join("|");
-  return crypto.createHash("sha256").update(payload).digest("hex");
-}
 
 exports.uploadUpiPdf = async (req, res) => {
   try {
@@ -97,7 +84,7 @@ exports.uploadUpiPdf = async (req, res) => {
       if (!payee) {
         throw new Error(`Payee resolution failed for ${tx.hashedName}`);
       }
-      const sourceHash = buildSourceHash(tx, payee._id);
+      const sourceHash = generateTransactionHash(tx, payee._id);
       uploadHashCounts.set(sourceHash, (uploadHashCounts.get(sourceHash) || 0) + 1);
       if (!hashPreviewMap.has(sourceHash)) {
         hashPreviewMap.set(sourceHash, {

@@ -1,37 +1,56 @@
 const Payee = require("../models/Payee");
+const { normalize, maskName } = require("./maskingService");
+
+const MERCHANT_KEYWORDS = [
+  "limited", "ltd", "pvt", "corp", "inc", "services", "solutions",
+  "store", "shop", "mart", "supermarket", "restaurant", "cafe",
+  "swiggy", "zomato", "amazon", "flipkart", "uber", "ola", "jio",
+  "airtel", "recharge", "bill", "payment", "cinema", "multiplex",
+];
+
+const MERCHANT_VPA_SUFFIXES = ["@okhdfcbank", "@okaxis", "@okicici", "@okbizaxis"];
 
 /**
- * Normalize any raw payee name
+ * Heuristic to classify payeeType (P2P or P2M)
  */
-function normalizeName(name) {
-  return name.toLowerCase().replace(/\s+/g, " ").trim();
-}
+function classifyPayee(name, vpa = "") {
+  const normName = normalize(name);
+  const normVpa = vpa.toLowerCase();
 
-function maskName(name) {
-  const parts = name.split(/\s+/).filter(Boolean);
-  return parts
-    .map((part) => {
-      const first = part[0] || "";
-      return first ? `${first}${"*".repeat(Math.max(1, part.length - 1))}` : "*";
-    })
-    .join(" ");
+  // If we have a VPA, check for merchant suffixes (GPay/PhonePe merchants often use specific ones)
+  if (normVpa && MERCHANT_VPA_SUFFIXES.some(s => normVpa.endsWith(s))) {
+    return "P2M";
+  }
+
+  // Check for common merchant keywords in the name
+  if (MERCHANT_KEYWORDS.some(k => normName.includes(k))) {
+    return "P2M";
+  }
+
+  // If the name is very short (likely a personal name) or doesn't match keywords
+  return "P2P"; 
 }
 
 /**
  * Find or create payee
  * AUTO learning happens here
  */
-async function resolvePayee({ rawName, hashedName }) {
+async function resolvePayee({ rawName, hashedName, vpa = "" }) {
   let payee = await Payee.findOne({ hashedName });
 
   if (!payee) {
     const storePii = process.env.STORE_PII === "true";
     const displayName = storePii ? rawName : maskName(rawName);
-    const normalizedName = storePii ? normalizeName(rawName) : undefined;
+    const normalizedName = storePii ? normalize(rawName) : undefined;
+    
+    const payeeType = classifyPayee(rawName, vpa);
+
     payee = await Payee.create({
       displayName,
       normalizedName,
       hashedName,
+      payeeType,
+      metadata: vpa ? { vpa } : {},
       confidence: 0.3, // base confidence
     });
   }
@@ -72,6 +91,6 @@ async function updatePayeeConfidence(payee, category, signal = "AUTO") {
 module.exports = {
   resolvePayee,
   updatePayeeConfidence,
-  normalizeName, // useful for GraphQL later
+  normalizeName: normalize,
   maskName,
 };
