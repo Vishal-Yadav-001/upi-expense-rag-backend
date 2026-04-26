@@ -1,6 +1,6 @@
-const iciciParser = require("./parsers/iciciParser");
+const superMoneyParser = require("./parsers/superMoneyParser");
 
-const parsers = [iciciParser];
+const parsers = [superMoneyParser];
 
 /**
  * ParserFactory
