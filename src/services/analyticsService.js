@@ -88,10 +88,11 @@ async function monthlySpend({ fromDate, toDate }) {
 
 function detectFrequency(dates) {
   if (dates.length < 3) return null;
+  const sortedDates = [...dates].sort((a, b) => a - b);
 
   const intervals = [];
-  for (let i = 1; i < dates.length; i++) {
-    const diffDays = (dates[i] - dates[i - 1]) / (1000 * 60 * 60 * 24);
+  for (let i = 1; i < sortedDates.length; i++) {
+    const diffDays = (sortedDates[i] - sortedDates[i - 1]) / (1000 * 60 * 60 * 24);
     intervals.push(diffDays);
   }
 

@@ -3,7 +3,7 @@ const User = require("../../models/User");
 const userResolvers = {
   Query: {
     users: async () => {
-      return await User.find().sort({ createdAt: -1 });
+      throw new Error("The users query is disabled until authentication is implemented.");
     },
   },
 

@@ -23,6 +23,7 @@ const transactionResolvers = {
       }
 
       return Transaction.find(query)
+        .populate("payee")
         .sort({ date: -1 }) // latest first
         .limit(limit)
         .lean();
@@ -53,7 +54,7 @@ const transactionResolvers = {
     id: (doc) => (doc && doc._id ? doc._id.toString() : null),
     payee: async (doc) => {
       if (!doc || !doc.payee) return null;
-      if (doc.payee.displayName) return doc.payee;
+      if (typeof doc.payee === "object") return doc.payee;
       return Payee.findById(doc.payee);
     },
   },

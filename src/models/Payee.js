@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { hash } = require("../services/maskingService");
 
 const payeeSchema = new mongoose.Schema(
   {
@@ -62,8 +63,14 @@ const payeeSchema = new mongoose.Schema(
 
 payeeSchema.statics.findByRawName = function (name) {
   const normalized = name.toLowerCase().replace(/\s+/g, " ").trim();
+  const hashedName = `PAYEE_${hash(name).slice(0, 12)}`;
 
-  return this.findOne({ normalizedName: normalized });
+  return this.findOne({
+    $or: [
+      { normalizedName: normalized },
+      { hashedName },
+    ],
+  });
 };
 
 module.exports = mongoose.model("Payee", payeeSchema);

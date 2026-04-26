@@ -1,6 +1,51 @@
 const Transaction = require("../../models/Transaction");
 const { detectFrequency } = require("../../services/analyticsService");
 
+function calculateSubscriptionConfidence(history, count) {
+  const countScore = Math.min(1, count / 6);
+
+  const gaps = [];
+  for (let i = 1; i < history.length; i++) {
+    const prev = new Date(history[i - 1].date);
+    const curr = new Date(history[i].date);
+    const diffDays = Math.abs((curr - prev) / (1000 * 60 * 60 * 24));
+    gaps.push(diffDays);
+  }
+
+  const avgGap = gaps.reduce((a, b) => a + b, 0) / (gaps.length || 1);
+  const gapVariance =
+    gaps.reduce((sum, gap) => sum + Math.pow(gap - avgGap, 2), 0) /
+    (gaps.length || 1);
+  const gapStdDev = Math.sqrt(gapVariance);
+
+  let frequencyScore;
+  if (gapStdDev < 3) frequencyScore = 1;
+  else if (gapStdDev < 7) frequencyScore = 0.7;
+  else if (gapStdDev < 12) frequencyScore = 0.4;
+  else frequencyScore = 0.1;
+
+  const amounts = history.map((h) => h.amount);
+  const avgAmount =
+    amounts.reduce((a, b) => a + b, 0) / amounts.length;
+  const amountVariance =
+    amounts.reduce(
+      (sum, amt) => sum + Math.pow(amt - avgAmount, 2),
+      0,
+    ) / amounts.length;
+  const amountStdDev = Math.sqrt(amountVariance);
+  const variationPercent = (amountStdDev / (avgAmount || 1)) * 100;
+
+  let amountScore;
+  if (variationPercent < 5) amountScore = 1;
+  else if (variationPercent < 10) amountScore = 0.7;
+  else if (variationPercent < 20) amountScore = 0.4;
+  else amountScore = 0.1;
+
+  return parseFloat((
+    countScore * 0.4 + frequencyScore * 0.4 + amountScore * 0.2
+  ).toFixed(2));
+}
+
 const insightsResolvers = {
   Query: {
     /**
@@ -85,7 +130,7 @@ const insightsResolvers = {
           (a, b) => new Date(a.date) - new Date(b.date),
         );
 
-        const dates = sortedHistory.map((h) => h.date);
+        const dates = sortedHistory.map((h) => new Date(h.date));
         const frequency = detectFrequency(dates);
         if (!frequency) continue;
 
@@ -93,9 +138,6 @@ const insightsResolvers = {
           sortedHistory.reduce((sum, item) => sum + item.amount, 0) /
           sortedHistory.length;
 
-        // =========================
-        // 🔥 PRICE DRIFT LOGIC
-        // =========================
         let priceChange = null;
 
         if (sortedHistory.length >= 4) {
@@ -115,67 +157,14 @@ const insightsResolvers = {
           }
         }
 
-        // =========================
-        // 🧠 ADVANCED CONFIDENCE MODEL
-        // =========================
-
-        // 1️⃣ Count Score
-        const countScore = Math.min(1, g.count / 6);
-
-        // 2️⃣ Frequency Stability Score
-        const gaps = [];
-        for (let i = 1; i < sortedHistory.length; i++) {
-          const prev = new Date(sortedHistory[i - 1].date);
-          const curr = new Date(sortedHistory[i].date);
-          const diffDays = Math.abs((curr - prev) / (1000 * 60 * 60 * 24));
-          gaps.push(diffDays);
-        }
-
-        const avgGap = gaps.reduce((a, b) => a + b, 0) / (gaps.length || 1);
-
-        const gapVariance =
-          gaps.reduce((sum, g) => sum + Math.pow(g - avgGap, 2), 0) /
-          (gaps.length || 1);
-
-        const gapStdDev = Math.sqrt(gapVariance);
-
-        let frequencyScore;
-        if (gapStdDev < 3) frequencyScore = 1;
-        else if (gapStdDev < 7) frequencyScore = 0.7;
-        else if (gapStdDev < 12) frequencyScore = 0.4;
-        else frequencyScore = 0.1;
-
-        // 3️⃣ Amount Stability Score
-        const amounts = sortedHistory.map((h) => h.amount);
-        const avgAmountValue =
-          amounts.reduce((a, b) => a + b, 0) / amounts.length;
-
-        const amountVariance =
-          amounts.reduce(
-            (sum, amt) => sum + Math.pow(amt - avgAmountValue, 2),
-            0,
-          ) / amounts.length;
-
-        const amountStdDev = Math.sqrt(amountVariance);
-
-        const variationPercent = (amountStdDev / (avgAmountValue || 1)) * 100;
-
-        let amountScore;
-        if (variationPercent < 5) amountScore = 1;
-        else if (variationPercent < 10) amountScore = 0.7;
-        else if (variationPercent < 20) amountScore = 0.4;
-        else amountScore = 0.1;
-
-        // 🎯 Final Weighted Confidence
-        const confidence =
-          countScore * 0.4 + frequencyScore * 0.4 + amountScore * 0.2;
+        const confidence = calculateSubscriptionConfidence(sortedHistory, g.count);
 
         results.push({
           payee: g.payee,
           frequency,
           avgAmount: parseFloat(avgAmount.toFixed(2)),
           lastPaidAt: g.lastPaidAt,
-          confidence: parseFloat(confidence.toFixed(2)),
+          confidence,
           priceChange,
         });
       }
@@ -233,7 +222,6 @@ const insightsResolvers = {
         const frequency = detectFrequency(dates);
         if (frequency !== "MONTHLY") continue;
 
-        // Calculate average gap
         const gaps = [];
         for (let i = 1; i < dates.length; i++) {
           const diff = (dates[i] - dates[i - 1]) / (1000 * 60 * 60 * 24);
@@ -250,12 +238,13 @@ const insightsResolvers = {
           const avgAmount =
             sortedHistory.reduce((sum, h) => sum + h.amount, 0) /
             sortedHistory.length;
+          const confidence = calculateSubscriptionConfidence(sortedHistory, g.count);
 
           results.push({
             payee: g.payee,
             expectedDate: expectedDate.toISOString(),
             avgAmount: parseFloat(avgAmount.toFixed(2)),
-            confidence: 0.8, // reuse confidence logic later if needed
+            confidence,
           });
         }
       }
