@@ -1,5 +1,6 @@
 const Transaction = require("../../models/Transaction");
 const Payee = require("../../models/Payee");
+const { hash } = require("../../services/maskingService");
 
 const transactionResolvers = {
   Query: {
@@ -33,7 +34,14 @@ const transactionResolvers = {
 
       // 1. If no ID, attempt to resolve the name to an ID
       if (!resolvedPayeeId && payeeName) {
-        const payee = await Payee.findByRawName(payeeName);
+        // Strategy A (PII on): query by normalizedName via findByRawName.
+        // Strategy B (PII off): normalizedName is never stored, so fall back to
+        // querying by hashedName - the same deterministic hash used during ingestion.
+        let payee = await Payee.findByRawName(payeeName);
+        if (!payee) {
+          const hashedName = `PAYEE_${hash(payeeName).slice(0, 12)}`;
+          payee = await Payee.findOne({ hashedName });
+        }
         if (!payee) return []; // Return empty if name doesn't exist
         resolvedPayeeId = payee._id;
       }

@@ -130,6 +130,9 @@ const insightsResolvers = {
           (a, b) => new Date(a.date) - new Date(b.date),
         );
 
+        // Cast to Date objects so detectFrequency can do arithmetic (date - date).
+        // MongoDB aggregation may return Date objects already, but casting defensively
+        // ensures this works regardless of how the value arrives (string or Date).
         const dates = sortedHistory.map((h) => new Date(h.date));
         const frequency = detectFrequency(dates);
         if (!frequency) continue;

@@ -12,6 +12,11 @@ async function startServer() {
   app.use(cors());
   app.use(express.json());
 
+  // Health check - used by Railway and monitoring tools to verify the server is up
+  app.get("/health", (_, res) =>
+    res.json({ status: "ok", timestamp: new Date().toISOString() }),
+  );
+
   // Endpoint to ingest UPI PDF
   app.use("/api", uploadRoutes);
 
