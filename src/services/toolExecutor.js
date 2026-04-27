@@ -1,0 +1,127 @@
+const { totalSpendByCategory, monthlySpend } = require("./analyticsService");
+const {
+  getTopRecurringPayees,
+  getSubscriptions,
+  getUpcomingSubscriptions,
+} = require("./insightsService");
+const Transaction = require("../models/Transaction");
+
+/**
+ * Executes the tool Gemini chose and returns structured data.
+ * The returned data is sent back to Gemini so it can compose a natural language answer.
+ *
+ * Each case maps to one toolDefinition name and calls your existing
+ * service functions or MongoDB queries directly.
+ *
+ * @param {string} toolName - The Gemini returned in functionCalls[0].name
+ * @param {object} args - The arguments Gemini extracted from the user's question
+ * @returns {Promise<any>} - Raw data (array or object) for Gemini to narrate
+ */
+
+/**
+ * Validates that a date string is a valid ISO date (YYYY-MM-DD).
+ * Rejects bad inputs before they reach MongoDB to prevent query errors.
+ */
+function isValidDate(str) {
+  if (!str) return true; // optional fields are fine
+  return /^\d{4}-\d{2}-\d{2}$/.test(str) && !isNaN(new Date(str).getTime());
+}
+
+async function executeTool(toolName, args = {}) {
+  // Validate date args on every tool that accepts them
+  if (args.fromDate && !isValidDate(args.fromDate)) {
+    throw new Error(`Invalid fromDate: "${args.fromDate}". Use YYYY-MM-DD format.`);
+  }
+  if (args.toDate && !isValidDate(args.toDate)) {
+    throw new Error(`Invalid toDate: "${args.toDate}". Use YYYY-MM-DD format.`);
+  }
+
+  switch (toolName) {
+    case "get_monthly_spend": {
+      const { fromDate, toDate } = args;
+      return monthlySpend({ fromDate, toDate });
+    }
+
+    case "get_spend_by_category": {
+      const { fromDate, toDate } = args;
+      return totalSpendByCategory({ fromDate, toDate });
+    }
+
+    case "get_subscriptions": {
+      const { limit = 10 } = args;
+      const results = await getSubscriptions({ limit });
+
+      return results.map((item) => ({
+        payeeName: item.payee.displayName,
+        category: item.payee.category,
+        frequency: item.frequency,
+        avgAmount: item.avgAmount,
+        transactionCount: item.transactionCount,
+        lastPaidAt: new Date(item.lastPaidAt).toISOString().split("T")[0],
+        confidence: item.confidence,
+        priceChange: item.priceChange,
+      }));
+    }
+
+    case "get_upcoming_bills": {
+      const { days = 10 } = args;
+      const results = await getUpcomingSubscriptions({ days });
+
+      return results.map((item) => ({
+        payeeName: item.payee.displayName,
+        category: item.payee.category,
+        expectedDate: item.expectedDate.split("T")[0],
+        avgAmount: item.avgAmount,
+        confidence: item.confidence,
+      }));
+    }
+
+    case "get_top_payees": {
+      const { limit = 10, direction } = args;
+      const results = await getTopRecurringPayees({ limit, direction });
+
+      return results.map((item) => ({
+        payeeName: item.payee.displayName,
+        category: item.payee.category,
+        transactionCount: item.transactionCount,
+        totalAmount: item.totalAmount,
+        lastPaidAt: new Date(item.lastPaidAt).toISOString().split("T")[0],
+      }));
+    }
+
+    case "get_transactions": {
+      // Cap at 10 rows - sending 20 transactions to Gemini risks exceeding token budget
+      const { status, direction, fromDate, toDate, limit = 10 } = args;
+
+      const query = {};
+      if (status) query.status = status;
+      if (direction) query.direction = direction;
+      if (fromDate || toDate) {
+        query.date = {};
+        if (fromDate) query.date.$gte = new Date(fromDate);
+        if (toDate) query.date.$lte = new Date(toDate);
+      }
+
+      const transactions = await Transaction.find(query)
+        .populate("payee", "displayName category")
+        .sort({ date: -1 })
+        .limit(limit)
+        .lean();
+
+      // Return a clean flat shape - drop raw `name` since `payee` covers it
+      return transactions.map((tx) => ({
+        payee: tx.payee?.displayName || tx.name,
+        category: tx.payee?.category || "UNCATEGORIZED",
+        amount: tx.amount,
+        direction: tx.direction,
+        date: new Date(tx.date).toISOString().split("T")[0],
+        status: tx.status,
+      }));
+    }
+
+    default:
+      throw new Error(`Unknown tool: ${toolName}`);
+  }
+}
+
+module.exports = { executeTool };
