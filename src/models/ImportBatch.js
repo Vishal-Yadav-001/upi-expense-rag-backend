@@ -12,7 +12,7 @@ const importBatchSchema = new mongoose.Schema(
     skippedCount: { type: Number, default: 0 },
     status: {
       type: String,
-      enum: ["PENDING", "COMPLETED", "FAILED"],
+      enum: ["PENDING", "PROCESSING", "COMPLETED", "FAILED"],
       default: "PENDING",
     },
     duplicateHashes: {

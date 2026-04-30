@@ -1,24 +1,12 @@
 require("dotenv").config(); // Load env vars first
-const express = require("express");
-const cors = require("cors");
 const { ApolloServer } = require("apollo-server-express");
 const { typeDefs, resolvers } = require("./graphql");
-const uploadRoutes = require("./routes/upload.routes");
 const connectDB = require("./config/db");
+const { createApp } = require("./app");
 
 async function startServer() {
   await connectDB();
-  const app = express();
-  app.use(cors());
-  app.use(express.json());
-
-  // Health check - used by Railway and monitoring tools to verify the server is up
-  app.get("/health", (_, res) =>
-    res.json({ status: "ok", timestamp: new Date().toISOString() }),
-  );
-
-  // Endpoint to ingest UPI PDF
-  app.use("/api", uploadRoutes);
+  const app = createApp();
 
   const apolloServer = new ApolloServer({ typeDefs, resolvers });
   await apolloServer.start();
