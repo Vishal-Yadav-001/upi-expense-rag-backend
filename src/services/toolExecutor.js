@@ -36,20 +36,22 @@ async function executeTool(toolName, args = {}) {
     throw new Error(`Invalid toDate: "${args.toDate}". Use YYYY-MM-DD format.`);
   }
 
+  const { sessionId } = args;
+
   switch (toolName) {
     case "get_monthly_spend": {
       const { fromDate, toDate } = args;
-      return monthlySpend({ fromDate, toDate });
+      return monthlySpend({ fromDate, toDate, sessionId });
     }
 
     case "get_spend_by_category": {
       const { fromDate, toDate } = args;
-      return totalSpendByCategory({ fromDate, toDate });
+      return totalSpendByCategory({ fromDate, toDate, sessionId });
     }
 
     case "get_subscriptions": {
       const { limit = 10 } = args;
-      const results = await getSubscriptions({ limit });
+      const results = await getSubscriptions({ limit, sessionId });
 
       return results.map((item) => ({
         payeeName: item.payee.displayName,
@@ -65,7 +67,7 @@ async function executeTool(toolName, args = {}) {
 
     case "get_upcoming_bills": {
       const { days = 10 } = args;
-      const results = await getUpcomingSubscriptions({ days });
+      const results = await getUpcomingSubscriptions({ days, sessionId });
 
       return results.map((item) => ({
         payeeName: item.payee.displayName,
@@ -78,7 +80,7 @@ async function executeTool(toolName, args = {}) {
 
     case "get_top_payees": {
       const { limit = 10, direction } = args;
-      const results = await getTopRecurringPayees({ limit, direction });
+      const results = await getTopRecurringPayees({ limit, direction, sessionId });
 
       return results.map((item) => ({
         payeeName: item.payee.displayName,
@@ -93,7 +95,7 @@ async function executeTool(toolName, args = {}) {
       // Cap at 10 rows - sending 20 transactions to Gemini risks exceeding token budget
       const { status, direction, fromDate, toDate, limit = 10 } = args;
 
-      const query = {};
+      const query = { sessionId };
       if (status) query.status = status;
       if (direction) query.direction = direction;
       if (fromDate || toDate) {

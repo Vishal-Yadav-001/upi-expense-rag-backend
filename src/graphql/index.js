@@ -14,6 +14,8 @@ const importBatchResolvers = require("./resolvers/importBatch.resolvers");
 const importBatchTypeDefs = require("./typeDefs/importBatch.typeDefs");
 const aiResolvers = require("./resolvers/ai.resolvers");
 const aiTypeDefs = require("./typeDefs/ai.typeDefs");
+const feedbackTypeDefs = require("./typeDefs/feedback.typeDefs");
+const feedbackResolvers = require("./resolvers/feedback.resolvers");
 
 // Include payee typeDefs and resolvers
 const typeDefsArray = [
@@ -24,6 +26,7 @@ const typeDefsArray = [
   insightsTypeDefs,
   importBatchTypeDefs,
   aiTypeDefs,
+  feedbackTypeDefs,
 ];
 const resolversArray = [
   userResolvers,
@@ -33,6 +36,7 @@ const resolversArray = [
   insightsResolvers,
   importBatchResolvers,
   aiResolvers,
+  feedbackResolvers,
 ];
 // Merging ensures nested objects (like Query/Mutation) are unified
 const typeDefs = mergeTypeDefs(typeDefsArray);

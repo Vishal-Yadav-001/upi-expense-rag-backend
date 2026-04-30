@@ -6,16 +6,16 @@ const {
 
 const insightsResolvers = {
   Query: {
-    topRecurringPayees: async (_, { limit = 10, direction }) => {
-      return getTopRecurringPayees({ limit, direction });
+    topRecurringPayees: async (_, args, context) => {
+      return getTopRecurringPayees({ ...args, sessionId: context.sessionId });
     },
 
-    detectSubscriptions: async (_, { limit = 10 }) => {
-      return getSubscriptions({ limit });
+    detectSubscriptions: async (_, { limit = 10 }, context) => {
+      return getSubscriptions({ limit, sessionId: context.sessionId });
     },
 
-    upcomingSubscriptions: async (_, { days = 10 }) => {
-      return getUpcomingSubscriptions({ days });
+    upcomingSubscriptions: async (_, { days = 10 }, context) => {
+      return getUpcomingSubscriptions({ days, sessionId: context.sessionId });
     },
   },
 };

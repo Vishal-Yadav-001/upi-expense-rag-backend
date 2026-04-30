@@ -46,17 +46,18 @@ function calculateSubscriptionConfidence(history, count) {
   ).toFixed(2));
 }
 
-function buildRecurringMatch(direction) {
+function buildRecurringMatch(direction, sessionId) {
   return {
     direction,
     status: "SUCCESS",
     payee: { $ne: null },
+    sessionId,
   };
 }
 
-function buildRecurringGroupedPipeline(direction) {
+function buildRecurringGroupedPipeline(direction, sessionId) {
   return [
-    { $match: buildRecurringMatch(direction) },
+    { $match: buildRecurringMatch(direction, sessionId) },
     {
       $group: {
         _id: "$payee",
@@ -78,9 +79,9 @@ function buildRecurringGroupedPipeline(direction) {
   ];
 }
 
-async function getTopRecurringPayees({ limit = 10, direction = "DEBIT" } = {}) {
+async function getTopRecurringPayees({ limit = 10, direction = "DEBIT", sessionId } = {}) {
   return Transaction.aggregate([
-    { $match: buildRecurringMatch(direction) },
+    { $match: buildRecurringMatch(direction, sessionId) },
     {
       $group: {
         _id: "$payee",
@@ -103,8 +104,8 @@ async function getTopRecurringPayees({ limit = 10, direction = "DEBIT" } = {}) {
   ]);
 }
 
-async function getSubscriptions({ limit = 10 } = {}) {
-  const grouped = await Transaction.aggregate(buildRecurringGroupedPipeline("DEBIT"));
+async function getSubscriptions({ limit = 10, sessionId } = {}) {
+  const grouped = await Transaction.aggregate(buildRecurringGroupedPipeline("DEBIT", sessionId));
   const results = [];
 
   for (const g of grouped) {
@@ -150,12 +151,12 @@ async function getSubscriptions({ limit = 10 } = {}) {
   return results.slice(0, limit);
 }
 
-async function getUpcomingSubscriptions({ days = 10 } = {}) {
+async function getUpcomingSubscriptions({ days = 10, sessionId } = {}) {
   const today = new Date();
   const thresholdDate = new Date();
   thresholdDate.setDate(today.getDate() + days);
 
-  const grouped = await Transaction.aggregate(buildRecurringGroupedPipeline("DEBIT"));
+  const grouped = await Transaction.aggregate(buildRecurringGroupedPipeline("DEBIT", sessionId));
   const results = [];
 
   for (const g of grouped) {

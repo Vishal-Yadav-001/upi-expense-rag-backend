@@ -8,6 +8,11 @@ function createApp() {
   app.use(cors());
   app.use(express.json());
 
+  app.use((req, res, next) => {
+    req.sessionId = req.header("X-Session-ID");
+    next();
+  });
+
   // Health check - used by deployment platforms and smoke tests.
   app.get("/health", (_, res) =>
     res.json({ status: "ok", timestamp: new Date().toISOString() }),

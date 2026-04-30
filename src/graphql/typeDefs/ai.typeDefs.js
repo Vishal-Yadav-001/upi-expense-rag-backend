@@ -8,7 +8,7 @@ const aiTypeDefs = gql`
   }
 
   extend type Mutation {
-    askAI(question: String!): AIResponse!
+    askAI(question: String!, model: String): AIResponse!
   }
 `;
 

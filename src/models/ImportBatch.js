@@ -19,6 +19,10 @@ const importBatchSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    sessionId: {
+      type: String,
+      index: true,
+    },
     errorMessage: { type: String },
   },
   { timestamps: true }

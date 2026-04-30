@@ -9,7 +9,7 @@ const { maskName, normalizeName } = require("./payeeService");
  * Main service to process a UPI PDF import.
  * Handles parsing, batch tracking, payee resolution, and transaction deduplication.
  */
-async function processUpiImport({ filePath, originalFileName, source }) {
+async function processUpiImport({ filePath, originalFileName, source, sessionId }) {
   console.log("[importService] Starting processing for:", originalFileName);
 
   // 1. Parse the PDF
@@ -21,6 +21,7 @@ async function processUpiImport({ filePath, originalFileName, source }) {
     originalFileName,
     storedFilePath: filePath,
     source,
+    sessionId,
     transactionCount: transactions.length,
     parsedCount: transactions.length,
     status: "PROCESSING",
@@ -89,12 +90,13 @@ async function processUpiImport({ filePath, originalFileName, source }) {
 
       ops.push({
         updateOne: {
-          filter: { sourceHash },
+          filter: { sourceHash, sessionId },
           update: {
             $setOnInsert: {
               ...sanitizedTx,
               payee: payee._id,
               sourceHash,
+              sessionId,
               importBatchId: batch._id,
             },
           },

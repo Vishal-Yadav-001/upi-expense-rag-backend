@@ -4,10 +4,10 @@ const { hash } = require("../../services/maskingService");
 
 const transactionResolvers = {
   Query: {
-    transactions: async (_, args) => {
+    transactions: async (_, args, context) => {
       const { status, direction, fromDate, toDate, limit = 50 } = args;
 
-      const query = {};
+      const query = { sessionId: context.sessionId };
 
       if (status) {
         query.status = status;
@@ -29,7 +29,7 @@ const transactionResolvers = {
         .limit(limit)
         .lean();
     },
-    transactionsByPayee: async (_, { payeeId, payeeName, limit = 50 }) => {
+    transactionsByPayee: async (_, { payeeId, payeeName, limit = 50 }, context) => {
       let resolvedPayeeId = payeeId;
 
       // 1. If no ID, attempt to resolve the name to an ID
@@ -52,7 +52,7 @@ const transactionResolvers = {
       }
 
       // 3. Execute query with index-backed search and sorting
-      return Transaction.find({ payee: resolvedPayeeId })
+      return Transaction.find({ payee: resolvedPayeeId, sessionId: context.sessionId })
         .populate("payee")
         .sort({ date: -1 })
         .limit(limit);

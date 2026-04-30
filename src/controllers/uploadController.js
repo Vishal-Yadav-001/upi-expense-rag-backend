@@ -13,6 +13,7 @@ exports.uploadUpiPdf = async (req, res) => {
       filePath: req.file.path,
       originalFileName: req.file.originalname,
       source: req.upiPdfSource || "SUPER_MONEY",
+      sessionId: req.sessionId,
     });
 
     res.status(200).json({

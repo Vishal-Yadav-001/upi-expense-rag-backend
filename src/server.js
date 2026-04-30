@@ -8,7 +8,13 @@ async function startServer() {
   await connectDB();
   const app = createApp();
 
-  const apolloServer = new ApolloServer({ typeDefs, resolvers });
+  const apolloServer = new ApolloServer({
+    typeDefs,
+    resolvers,
+    context: ({ req }) => ({
+      sessionId: req.header("X-Session-ID"),
+    }),
+  });
   await apolloServer.start();
   apolloServer.applyMiddleware({ app, path: "/graphql" });
 

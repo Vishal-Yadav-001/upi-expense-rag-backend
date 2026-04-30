@@ -39,6 +39,10 @@ const transactionSchema = new mongoose.Schema(
       type:mongoose.Schema.Types.ObjectId,
       ref:"Payee",
       index:true
+    },
+    sessionId: {
+      type: String,
+      index: true,
     }
   },
   { timestamps: true }
@@ -49,8 +53,8 @@ transactionSchema.index(
   { name: "txn_date_status_direction_idx" }
 );
 transactionSchema.index(
-  { sourceHash: 1 },
-  { name: "txn_source_hash_unique", unique: true }
+  { sourceHash: 1, sessionId: 1 },
+  { name: "txn_source_hash_session_unique", unique: true }
 );
 
 

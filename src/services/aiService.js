@@ -66,9 +66,10 @@ Rules you must always follow:
  * Step 5: Gemini composes a natural language answer using exact data
  *
  * @param {string} question - The user's natural language question
+ * @param {string} sessionId - The user's session ID
  * @returns {Promise<{ answer: string, toolsUsed: string[], data: string|null }>}
  */
-async function askAI(question) {
+async function askAI(question, sessionId) {
   try {
     const ai = getAI();
     if (!ai) {
@@ -115,7 +116,7 @@ async function askAI(question) {
 
       let result;
       try {
-        result = await executeTool(toolCall.name, toolCall.args);
+        result = await executeTool(toolCall.name, { ...toolCall.args, sessionId });
       } catch (toolErr) {
         // Tool execution failed - return safe fallback, do not hallucinate
         console.error(`[aiService] Tool ${toolCall.name} failed:`, toolErr.message);
@@ -144,7 +145,7 @@ async function askAI(question) {
 
     // Step 5: Ask Gemini to compose a final natural language answer from the tool data
     const finalResponse = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: modelName,
       contents,
       config,
     });

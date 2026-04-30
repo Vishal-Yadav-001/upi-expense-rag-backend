@@ -1,7 +1,7 @@
 const Transaction = require("../models/Transaction");
 
-async function totalSpendByCategory({ fromDate, toDate }) {
-  const match = { direction: "DEBIT", status: "SUCCESS" };
+async function totalSpendByCategory({ fromDate, toDate, sessionId }) {
+  const match = { direction: "DEBIT", status: "SUCCESS", sessionId };
 
   if (fromDate || toDate) {
     match.date = {};
@@ -37,10 +37,11 @@ async function totalSpendByCategory({ fromDate, toDate }) {
   ]);
 }
 
-async function monthlySpend({ fromDate, toDate }) {
+async function monthlySpend({ fromDate, toDate, sessionId }) {
   const match = {
     direction: "DEBIT",
     status: "SUCCESS",
+    sessionId,
   };
 
   if (fromDate || toDate) {
