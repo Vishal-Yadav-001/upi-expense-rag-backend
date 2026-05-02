@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const uploadRoutes = require("./routes/upload.routes");
+const sessionRoutes = require("./routes/session.routes");
 
 function createApp() {
   const app = express();
@@ -19,6 +20,7 @@ function createApp() {
   );
 
   app.use("/api", uploadRoutes);
+  app.use("/api/session", sessionRoutes);
 
   return app;
 }
