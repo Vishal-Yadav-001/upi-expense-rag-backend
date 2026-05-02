@@ -9,11 +9,18 @@ exports.uploadUpiPdf = async (req, res) => {
       });
     }
 
+    // Support both boolean and string "true"/"false" from form-data
+    let storePii = req.body.storePii;
+    if (storePii === "true") storePii = true;
+    if (storePii === "false") storePii = false;
+    if (typeof storePii !== "boolean") storePii = undefined;
+
     const result = await processUpiImport({
       filePath: req.file.path,
       originalFileName: req.file.originalname,
       source: req.upiPdfSource || "SUPER_MONEY",
       sessionId: req.sessionId,
+      storePii,
     });
 
     res.status(200).json({

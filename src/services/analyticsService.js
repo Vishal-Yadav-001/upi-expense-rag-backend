@@ -87,6 +87,48 @@ async function monthlySpend({ fromDate, toDate, sessionId }) {
   ]);
 }
 
+async function getOverallSummary({ sessionId }) {
+  const match = { status: "SUCCESS", sessionId };
+
+  const results = await Transaction.aggregate([
+    { $match: match },
+    {
+      $group: {
+        _id: null,
+        minDate: { $min: "$date" },
+        maxDate: { $max: "$date" },
+        totalDebit: {
+          $sum: {
+            $cond: [{ $eq: ["$direction", "DEBIT"] }, "$amount", 0],
+          },
+        },
+        totalCredit: {
+          $sum: {
+            $cond: [{ $eq: ["$direction", "CREDIT"] }, "$amount", 0],
+          },
+        },
+      },
+    },
+  ]);
+
+  if (!results || results.length === 0) {
+    return {
+      minDate: null,
+      maxDate: null,
+      totalDebit: 0,
+      totalCredit: 0,
+    };
+  }
+
+  const res = results[0];
+  return {
+    minDate: res.minDate ? res.minDate.toISOString().split("T")[0] : null,
+    maxDate: res.maxDate ? res.maxDate.toISOString().split("T")[0] : null,
+    totalDebit: res.totalDebit,
+    totalCredit: res.totalCredit,
+  };
+}
+
 function detectFrequency(dates) {
   if (dates.length < 3) return null;
   const sortedDates = [...dates].sort((a, b) => a - b);
@@ -107,5 +149,6 @@ function detectFrequency(dates) {
 module.exports = {
   totalSpendByCategory,
   monthlySpend,
+  getOverallSummary,
   detectFrequency
 };

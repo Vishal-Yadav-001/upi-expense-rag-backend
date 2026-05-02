@@ -9,7 +9,7 @@ const { maskName, normalizeName } = require("./payeeService");
  * Main service to process a UPI PDF import.
  * Handles parsing, batch tracking, payee resolution, and transaction deduplication.
  */
-async function processUpiImport({ filePath, originalFileName, source, sessionId }) {
+async function processUpiImport({ filePath, originalFileName, source, sessionId, storePii: storePiiOverride }) {
   console.log("[importService] Starting processing for:", originalFileName);
 
   // 1. Parse the PDF
@@ -17,6 +17,7 @@ async function processUpiImport({ filePath, originalFileName, source, sessionId 
   console.log("[importService] Transactions parsed:", transactions.length);
 
   // 2. Create the Import Batch
+  console.log("[importService] Creating batch for session:", sessionId);
   const batch = await ImportBatch.create({
     originalFileName,
     storedFilePath: filePath,
@@ -26,9 +27,11 @@ async function processUpiImport({ filePath, originalFileName, source, sessionId 
     parsedCount: transactions.length,
     status: "PROCESSING",
   });
+  console.log("[importService] Batch created:", batch._id);
 
   try {
     // 3. Resolve Payees (once per upload to minimize DB hits)
+    console.log("[importService] Resolving payees...");
     const uniquePayees = new Map();
     for (const tx of transactions) {
       if (!uniquePayees.has(tx.hashedName)) {
@@ -42,8 +45,14 @@ async function processUpiImport({ filePath, originalFileName, source, sessionId 
     const hashedNames = [...uniquePayees.keys()];
     const existingPayees = await Payee.find({ hashedName: { $in: hashedNames } });
     const payeeMap = new Map(existingPayees.map((payee) => [payee.hashedName, payee]));
+    console.log("[importService] Found existing payees:", existingPayees.length);
 
-    const storePii = process.env.STORE_PII === "true";
+    // Determine if we should store PII. 
+    // If override is provided (true/false), use it. Otherwise fall back to env var.
+    const storePii = typeof storePiiOverride === "boolean" 
+      ? storePiiOverride 
+      : (process.env.STORE_PII === "true");
+
     const newPayees = [];
     for (const payeeSeed of uniquePayees.values()) {
       if (payeeMap.has(payeeSeed.hashedName)) continue;
@@ -56,6 +65,7 @@ async function processUpiImport({ filePath, originalFileName, source, sessionId 
     }
 
     if (newPayees.length > 0) {
+      console.log("[importService] Creating new payees:", newPayees.length);
       const createdPayees = await Payee.insertMany(newPayees, { ordered: false });
       for (const payee of createdPayees) {
         payeeMap.set(payee.hashedName, payee);
@@ -63,6 +73,7 @@ async function processUpiImport({ filePath, originalFileName, source, sessionId 
     }
 
     // 4. Prepare Transaction Operations with Deduplication
+    console.log("[importService] Preparing bulk write for transactions...");
     const ops = [];
     const uploadHashCounts = new Map();
     const hashPreviewMap = new Map();
@@ -106,12 +117,14 @@ async function processUpiImport({ filePath, originalFileName, source, sessionId 
     }
 
     // 5. Bulk Write
+    console.log("[importService] Executing bulk write of ops:", ops.length);
     const bulkResult = ops.length
       ? await Transaction.bulkWrite(ops, { ordered: false })
       : { upsertedCount: 0 };
     
     const importedCount = bulkResult.upsertedCount || 0;
     const skippedCount = transactions.length - importedCount;
+    console.log(`[importService] Bulk write complete. Imported: ${importedCount}, Skipped: ${skippedCount}`);
 
     // 6. Finalize Batch
     batch.importedCount = importedCount;

@@ -67,9 +67,10 @@ Rules you must always follow:
  *
  * @param {string} question - The user's natural language question
  * @param {string} sessionId - The user's session ID
+ * @param {string} [modelName] - Optional Gemini model name
  * @returns {Promise<{ answer: string, toolsUsed: string[], data: string|null }>}
  */
-async function askAI(question, sessionId) {
+async function askAI(question, sessionId, modelName = "gemini-2.5-flash") {
   try {
     const ai = getAI();
     if (!ai) {
@@ -94,7 +95,7 @@ async function askAI(question, sessionId) {
 
     // Step 1 & 2: Send to Gemini - it will respond with a function call or a direct answer
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: modelName,
       contents,
       config,
     });

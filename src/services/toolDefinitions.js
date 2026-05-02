@@ -129,6 +129,16 @@ const toolDefinitions = [
       required: [],
     },
   },
+  {
+    name: "get_overall_summary",
+    description:
+      "Returns the overall date range (min and max dates) and the total money spent (debit) and received (credit) for the user's data. Use this when asked for a high-level summary of an uploaded statement or total spending overview.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {},
+      required: [],
+    },
+  },
 ];
 
 module.exports = toolDefinitions;

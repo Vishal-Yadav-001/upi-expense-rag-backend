@@ -1,4 +1,4 @@
-const { totalSpendByCategory, monthlySpend } = require("./analyticsService");
+const { totalSpendByCategory, monthlySpend, getOverallSummary } = require("./analyticsService");
 const {
   getTopRecurringPayees,
   getSubscriptions,
@@ -47,6 +47,10 @@ async function executeTool(toolName, args = {}) {
     case "get_spend_by_category": {
       const { fromDate, toDate } = args;
       return totalSpendByCategory({ fromDate, toDate, sessionId });
+    }
+
+    case "get_overall_summary": {
+      return getOverallSummary({ sessionId });
     }
 
     case "get_subscriptions": {
