@@ -1,6 +1,7 @@
 const { GoogleGenAI } = require("@google/genai");
 const toolDefinitions = require("./toolDefinitions");
 const { executeTool } = require("./toolExecutor");
+const { getDatabaseSchema } = require("../utils/schemaContext");
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
 
@@ -71,13 +72,16 @@ function formatAIError(err, { hasUserApiKey = false } = {}) {
  */
 const SYSTEM_PROMPT = `You are a personal finance assistant for Indian UPI transactions.
 
+${getDatabaseSchema()}
+
 Rules you must always follow:
 1. Always use the Rs symbol for amounts. Format large numbers in Indian style (e.g. Rs 1,20,000 not Rs 120,000).
 2. Only use exact numbers returned by tools. Never estimate, guess, or hallucinate figures.
 3. If a tool returns an empty array or no data, say "I don't have enough data to answer that" - do not make up an answer.
 4. Always mention the time period your answer covers when relevant (e.g. "this month", "in the last 3 months").
 5. Be concise. 2-4 sentences for simple questions. Use bullet points only when listing 3+ items.
-6. If the user asks about a specific payee or merchant, look for it in the tool results - do not assume it exists.`;
+6. If the user asks about a specific payee or merchant, look for it in the tool results - do not assume it exists.
+7. For complex questions that static tools cannot answer, use "query_database" with a valid MongoDB aggregation pipeline.`;
 
 /**
  * Main AI function - sends a question to Gemini with tool definitions,
