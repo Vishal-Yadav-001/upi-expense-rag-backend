@@ -153,6 +153,7 @@ async function askAI(question, sessionId, options = {}) {
       } catch (toolErr) {
         // Tool execution failed - return safe fallback, do not hallucinate
         console.error(`[aiService] Tool ${toolCall.name} failed:`, toolErr.message);
+
         return {
           answer: "I encountered an error fetching your data. Please try again.",
           toolsUsed,

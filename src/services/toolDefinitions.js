@@ -139,6 +139,26 @@ const toolDefinitions = [
       required: [],
     },
   },
+  {
+    name: "query_database",
+    description:
+      "Execute a raw MongoDB aggregation pipeline for complex queries that other tools cannot answer. Use this for filtered counts, custom groupings, finding specific high/low values, or multi-collection joins.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        collection: {
+          type: Type.STRING,
+          enum: ["transactions", "payees"],
+          description: "The collection to query",
+        },
+        pipeline: {
+          type: Type.STRING,
+          description: "JSON stringified array of MongoDB aggregation stages",
+        },
+      },
+      required: ["collection", "pipeline"],
+    },
+  },
 ];
 
 module.exports = toolDefinitions;
