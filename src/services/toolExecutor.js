@@ -125,6 +125,31 @@ async function executeTool(toolName, args = {}) {
       }));
     }
 
+    case "query_database": {
+      const { collection, pipeline, sessionId } = args;
+      let parsedPipeline;
+      try {
+        parsedPipeline = JSON.parse(pipeline);
+      } catch (e) {
+        throw new Error("Invalid JSON in pipeline argument");
+      }
+
+      if (!Array.isArray(parsedPipeline)) {
+        throw new Error("Pipeline must be an array");
+      }
+
+      // Security: Always scope to sessionId in the first stage
+      const scopedPipeline = [{ $match: { sessionId } }, ...parsedPipeline];
+
+      if (collection === "transactions") {
+        return Transaction.aggregate(scopedPipeline);
+      } else if (collection === "payees") {
+        return Payee.aggregate(scopedPipeline);
+      } else {
+        throw new Error(`Unsupported collection: ${collection}`);
+      }
+    }
+
     default:
       throw new Error(`Unknown tool: ${toolName}`);
   }
