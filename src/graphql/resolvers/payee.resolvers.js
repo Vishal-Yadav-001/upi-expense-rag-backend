@@ -1,4 +1,5 @@
 const Payee = require("../../models/Payee");
+const Transaction = require("../../models/Transaction");
 const { updatePayeeConfidence } = require("../../services/payeeService");
 
 const payeeResolvers = {
@@ -25,6 +26,9 @@ const payeeResolvers = {
   },
   Payee: {
     id: (doc) => (doc && doc._id ? doc._id.toString() : null),
+    transactionCount: async (parent) => {
+      return await Transaction.countDocuments({ payee: parent._id });
+    },
   },
 };
 

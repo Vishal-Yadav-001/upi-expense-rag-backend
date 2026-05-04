@@ -10,6 +10,7 @@ const payeeTypeDefs = gql`
     category: String
     confidence: Float
     source: String
+    transactionCount: Int
     createdAt: String
     updatedAt: String
   }
