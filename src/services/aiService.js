@@ -2,11 +2,27 @@ const { GoogleGenAI } = require("@google/genai");
 const toolDefinitions = require("./toolDefinitions");
 const { executeTool } = require("./toolExecutor");
 
-function getAI() {
-  if (!process.env.GEMINI_API_KEY) {
+const DEFAULT_MODEL = "gemini-2.5-flash";
+
+function getApiKey(apiKeyOverride) {
+  if (apiKeyOverride && apiKeyOverride.trim()) {
+    return apiKeyOverride.trim();
+  }
+
+  if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim()) {
+    return process.env.GEMINI_API_KEY.trim();
+  }
+
+  return null;
+}
+
+function getAI(apiKeyOverride) {
+  const apiKey = getApiKey(apiKeyOverride);
+  if (!apiKey) {
     return null;
   }
-  return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+  return new GoogleGenAI({ apiKey });
 }
 
 function getRetryDelaySeconds(message) {
@@ -17,7 +33,7 @@ function getRetryDelaySeconds(message) {
   return null;
 }
 
-function formatAIError(err) {
+function formatAIError(err, { hasUserApiKey = false } = {}) {
   const message = err && err.message ? err.message : "Unknown AI error";
   const isQuotaExceeded =
     message.includes("RESOURCE_EXHAUSTED") ||
@@ -27,9 +43,18 @@ function formatAIError(err) {
   if (isQuotaExceeded) {
     const retrySeconds = getRetryDelaySeconds(message);
     if (retrySeconds) {
-      return `AI quota is temporarily exhausted. Please try again in about ${retrySeconds} seconds.`;
+      if (hasUserApiKey) {
+        return `AI quota is temporarily exhausted. Please try again in about ${retrySeconds} seconds, check your Gemini quota, or switch to another model.`;
+      }
+
+      return `AI quota is temporarily exhausted. Please try again in about ${retrySeconds} seconds. Add your own Gemini API key from the Add AI Key button to continue right away.`;
     }
-    return "AI quota is temporarily exhausted. Please try again shortly.";
+
+    if (hasUserApiKey) {
+      return "AI quota is temporarily exhausted. Please check your Gemini quota or switch to another model and try again.";
+    }
+
+    return "AI quota is temporarily exhausted. Please try again shortly, or Add your own Gemini API key from the Add AI Key button to continue.";
   }
 
   return "I'm having trouble connecting right now. Please try again in a moment.";
@@ -67,12 +92,15 @@ Rules you must always follow:
  *
  * @param {string} question - The user's natural language question
  * @param {string} sessionId - The user's session ID
- * @param {string} [modelName] - Optional Gemini model name
+ * @param {{ modelName?: string, apiKey?: string }} [options] - Optional Gemini config
  * @returns {Promise<{ answer: string, toolsUsed: string[], data: string|null }>}
  */
-async function askAI(question, sessionId, modelName = "gemini-2.5-flash") {
+async function askAI(question, sessionId, options = {}) {
+  const modelName = options.modelName || DEFAULT_MODEL;
+  const hasUserApiKey = Boolean(options.apiKey && options.apiKey.trim());
+
   try {
-    const ai = getAI();
+    const ai = getAI(options.apiKey);
     if (!ai) {
       return {
         answer: "AI is not configured yet. Add GEMINI_API_KEY to use this feature.",
@@ -161,7 +189,7 @@ async function askAI(question, sessionId, modelName = "gemini-2.5-flash") {
     // Top-level catch: Gemini API error, network timeout, etc.
     console.error("[aiService] askAI failed:", err.message);
     return {
-      answer: formatAIError(err),
+      answer: formatAIError(err, { hasUserApiKey }),
       toolsUsed: [],
       data: null,
     };
