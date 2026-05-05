@@ -5,6 +5,7 @@ const {
   getUpcomingSubscriptions,
 } = require("./insightsService");
 const Transaction = require("../models/Transaction");
+const { generateEmbedding } = require("./embeddingService");
 
 /**
  * Executes the tool Gemini chose and returns structured data.
@@ -148,6 +149,51 @@ async function executeTool(toolName, args = {}) {
       } else {
         throw new Error(`Unsupported collection: ${collection}`);
       }
+    }
+
+    case "semantic_search": {
+      const { query, limit = 5 } = args;
+      const queryVector = await generateEmbedding(query);
+
+      const pipeline = [
+        {
+          $vectorSearch: {
+            index: "vector_index",
+            path: "embedding",
+            queryVector,
+            numCandidates: 100,
+            limit,
+            filter: { sessionId },
+          },
+        },
+        {
+          $lookup: {
+            from: "payees",
+            localField: "payee",
+            foreignField: "_id",
+            as: "payeeInfo",
+          },
+        },
+        {
+          $unwind: {
+            path: "$payeeInfo",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $project: {
+            payee: { $ifNull: ["$payeeInfo.displayName", "$name"] },
+            category: { $ifNull: ["$payeeInfo.category", "UNCATEGORIZED"] },
+            amount: 1,
+            direction: 1,
+            date: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
+            status: 1,
+            score: { $meta: "vectorSearchScore" },
+          },
+        },
+      ];
+
+      return Transaction.aggregate(pipeline);
     }
 
     default:

@@ -159,6 +159,25 @@ const toolDefinitions = [
       required: ["collection", "pipeline"],
     },
   },
+  {
+    name: "semantic_search",
+    description:
+      "Find transactions using fuzzy or meaning-based search. Use this when the user asks about categories like 'coffee', 'recent food orders', 'travel expenses', or specific topics that might not match exact merchant names.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        query: {
+          type: Type.STRING,
+          description: "The search query (e.g. 'recent food expenses')",
+        },
+        limit: {
+          type: Type.NUMBER,
+          description: "Maximum number of transactions to return (default 5)",
+        },
+      },
+      required: ["query"],
+    },
+  },
 ];
 
 module.exports = toolDefinitions;

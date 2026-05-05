@@ -4,6 +4,7 @@ const Transaction = require("../models/Transaction");
 const ImportBatch = require("../models/ImportBatch");
 const Payee = require("../models/Payee");
 const { maskName, normalizeName } = require("./payeeService");
+const { generateBatchEmbeddings } = require("./embeddingService");
 
 /**
  * Main service to process a UPI PDF import.
@@ -72,13 +73,34 @@ async function processUpiImport({ filePath, originalFileName, source, sessionId,
       }
     }
 
-    // 4. Prepare Transaction Operations with Deduplication
+    // 4. Generate Embeddings for all transactions
+    console.log("[importService] Generating embeddings for transactions...");
+    const embeddingStrings = transactions.map(tx => {
+      const payee = payeeMap.get(tx.hashedName);
+      const merchant = payee ? payee.displayName : tx.name;
+      const category = payee ? payee.category : "UNCATEGORIZED";
+      return `Merchant: ${merchant}, Category: ${category}, Amount: ${tx.amount}`;
+    });
+
+    // Process in chunks to avoid API limits (e.g., 50 per call)
+    const chunkSize = 50;
+    const allEmbeddings = [];
+    for (let i = 0; i < embeddingStrings.length; i += chunkSize) {
+      const chunk = embeddingStrings.slice(i, i + chunkSize);
+      console.log(`[importService] Embedding chunk ${i / chunkSize + 1}/${Math.ceil(embeddingStrings.length / chunkSize)}`);
+      const embeddings = await generateBatchEmbeddings(chunk);
+      allEmbeddings.push(...embeddings);
+    }
+
+    // 5. Prepare Transaction Operations with Deduplication
     console.log("[importService] Preparing bulk write for transactions...");
     const ops = [];
     const uploadHashCounts = new Map();
     const hashPreviewMap = new Map();
 
-    for (const tx of transactions) {
+    for (let i = 0; i < transactions.length; i++) {
+      const tx = transactions[i];
+      const embedding = allEmbeddings[i];
       const payee = payeeMap.get(tx.hashedName);
       if (!payee) continue; // Should not happen
 
@@ -109,6 +131,7 @@ async function processUpiImport({ filePath, originalFileName, source, sessionId,
               sourceHash,
               sessionId,
               importBatchId: batch._id,
+              embedding,
             },
           },
           upsert: true,
@@ -116,7 +139,7 @@ async function processUpiImport({ filePath, originalFileName, source, sessionId,
       });
     }
 
-    // 5. Bulk Write
+    // 6. Bulk Write
     console.log("[importService] Executing bulk write of ops:", ops.length);
     const bulkResult = ops.length
       ? await Transaction.bulkWrite(ops, { ordered: false })
@@ -126,7 +149,7 @@ async function processUpiImport({ filePath, originalFileName, source, sessionId,
     const skippedCount = transactions.length - importedCount;
     console.log(`[importService] Bulk write complete. Imported: ${importedCount}, Skipped: ${skippedCount}`);
 
-    // 6. Finalize Batch
+    // 7. Finalize Batch
     batch.importedCount = importedCount;
     batch.skippedCount = skippedCount;
     batch.status = "COMPLETED";
