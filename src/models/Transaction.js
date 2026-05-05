@@ -43,6 +43,10 @@ const transactionSchema = new mongoose.Schema(
     sessionId: {
       type: String,
       index: true,
+    },
+    embedding: {
+      type: [Number],
+      index: true,
     }
   },
   { timestamps: true }
