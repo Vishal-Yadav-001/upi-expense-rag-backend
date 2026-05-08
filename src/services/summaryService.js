@@ -57,4 +57,22 @@ async function generateMonthlySummary(sessionId, monthStr) {
   );
 }
 
-module.exports = { generateMonthlySummary };
+async function getSummaries({ sessionId, type = "MONTHLY", limit = 12 }) {
+  const summaries = await FinancialSummary.find({ sessionId, type })
+    .sort({ period: -1 })
+    .limit(limit)
+    .lean();
+
+  return summaries.map(s => ({
+    id: s._id,
+    type: s.type,
+    period: s.period,
+    totalDebit: s.data.totalDebit,
+    totalCredit: s.data.totalCredit,
+    transactionCount: s.data.transactionCount,
+    topCategories: s.data.topCategories,
+    lastUpdated: s.lastUpdated ? s.lastUpdated.toISOString() : null
+  }));
+}
+
+module.exports = { generateMonthlySummary, getSummaries };

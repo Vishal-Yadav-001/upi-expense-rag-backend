@@ -1,4 +1,5 @@
 const { totalSpendByCategory, monthlySpend } = require("../../services/analyticsService");
+const { getSummaries } = require("../../services/summaryService");
 
 const analyticsResolvers = {
   Query: {
@@ -8,6 +9,10 @@ const analyticsResolvers = {
 
     monthlySpend: async (_, args, context) => {
       return monthlySpend({ ...args, sessionId: context.sessionId });
+    },
+
+    financialSummaries: async (_, args, context) => {
+      return getSummaries({ ...args, sessionId: context.sessionId });
     },
   },
 };

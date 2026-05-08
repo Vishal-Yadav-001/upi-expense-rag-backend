@@ -12,6 +12,22 @@ type CategorySpend{
     total: Float
   }
 
+  type TopCategory {
+    category: String
+    amount: Float
+  }
+
+  type FinancialSummary {
+    id: ID!
+    type: String!
+    period: String!
+    totalDebit: Float!
+    totalCredit: Float!
+    transactionCount: Int!
+    topCategories: [TopCategory!]!
+    lastUpdated: String
+  }
+
 extend type Query{
     totalSpendByCategory(
         fromDate:String,
@@ -22,6 +38,11 @@ extend type Query{
       fromDate: String
       toDate: String
     ): [MonthlySpend!]!
+
+    financialSummaries(
+      type: String
+      limit: Int
+    ): [FinancialSummary!]!
 }
 
 `;
