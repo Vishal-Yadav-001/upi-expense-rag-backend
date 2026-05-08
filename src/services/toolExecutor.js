@@ -6,6 +6,7 @@ const {
 } = require("./insightsService");
 const Transaction = require("../models/Transaction");
 const { generateEmbedding } = require("./embeddingService");
+const FinancialSummary = require("../models/FinancialSummary");
 
 /**
  * Executes the tool Gemini chose and returns structured data.
@@ -194,6 +195,22 @@ async function executeTool(toolName, args = {}) {
       ];
 
       return Transaction.aggregate(pipeline);
+    }
+
+    case "get_financial_summary": {
+      const { type = "MONTHLY", limit = 6 } = args;
+      const summaries = await FinancialSummary.find({ sessionId, type })
+        .sort({ period: -1 })
+        .limit(limit)
+        .lean();
+
+      return summaries.map(s => ({
+        period: s.period,
+        totalDebit: s.data.totalDebit,
+        totalCredit: s.data.totalCredit,
+        transactionCount: s.data.transactionCount,
+        topCategories: s.data.topCategories
+      }));
     }
 
     default:

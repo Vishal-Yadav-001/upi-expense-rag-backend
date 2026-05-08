@@ -81,7 +81,8 @@ Rules you must always follow:
 4. Always mention the time period your answer covers when relevant (e.g. "this month", "in the last 3 months").
 5. Be concise. 2-4 sentences for simple questions. Use bullet points only when listing 3+ items.
 6. If the user asks about a specific payee or merchant, look for it in the tool results - do not assume it exists.
-7. For complex questions that static tools cannot answer, use "query_database" with a valid MongoDB aggregation pipeline.`;
+7. For broad questions about spending trends, total monthly budget, or comparing months (e.g. "how much did I spend this year?"), ALWAYS use "get_financial_summary" first. It provides pre-calculated, accurate aggregates.
+8. For complex questions that static tools cannot answer, use "query_database" with a valid MongoDB aggregation pipeline.`;
 
 /**
  * Main AI function - sends a question to Gemini with tool definitions,

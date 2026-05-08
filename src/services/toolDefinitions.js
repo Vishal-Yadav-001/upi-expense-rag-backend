@@ -178,6 +178,26 @@ const toolDefinitions = [
       required: ["query"],
     },
   },
+  {
+    name: "get_financial_summary",
+    description:
+      "Returns pre-aggregated financial summaries for a specific period type (MONTHLY or WEEKLY). Use this for broad questions about spending trends, total monthly budget, or comparing months. It is much faster and more accurate than scanning individual transactions for high-level numbers.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        type: {
+          type: Type.STRING,
+          enum: ["MONTHLY", "WEEKLY"],
+          description: "The aggregation level (default: MONTHLY)",
+        },
+        limit: {
+          type: Type.NUMBER,
+          description: "Number of periods to return, starting from most recent (default: 6)",
+        },
+      },
+      required: [],
+    },
+  },
 ];
 
 module.exports = toolDefinitions;
