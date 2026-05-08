@@ -5,6 +5,7 @@ const ImportBatch = require("../models/ImportBatch");
 const Payee = require("../models/Payee");
 const { maskName, normalizeName } = require("./payeeService");
 const { generateBatchEmbeddings } = require("./embeddingService");
+const { generateMonthlySummary } = require("./summaryService");
 
 /**
  * Main service to process a UPI PDF import.
@@ -157,6 +158,19 @@ async function processUpiImport({ filePath, originalFileName, source, sessionId,
       .filter(([, count]) => count > 1)
       .map(([hash]) => hash);
     await batch.save();
+
+    // 8. Generate Summaries for affected months
+    const uniqueMonths = new Set();
+    transactions.forEach(tx => {
+      const date = new Date(tx.date);
+      const monthStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      uniqueMonths.add(monthStr);
+    });
+
+    console.log("[importService] Updating summaries for months:", [...uniqueMonths]);
+    for (const monthStr of uniqueMonths) {
+      await generateMonthlySummary(sessionId, monthStr);
+    }
 
     return {
       success: true,
