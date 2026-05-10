@@ -1,9 +1,11 @@
 const { executeTool } = require("./toolExecutor");
 const Transaction = require("../models/Transaction");
 const Payee = require("../models/Payee");
+const User = require("../models/User");
 
 jest.mock("../models/Transaction");
 jest.mock("../models/Payee");
+jest.mock("../models/User");
 
 describe("toolExecutor - query_database", () => {
   const sessionId = "test-session-123";
@@ -46,5 +48,30 @@ describe("toolExecutor - query_database", () => {
       pipeline: "[]",
       sessionId
     })).rejects.toThrow("Unsupported collection: users");
+  });
+});
+
+describe("toolExecutor - set_user_budget", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test("should update the monthly budget for admin user", async () => {
+    const amount = 50000;
+    const mockUser = {
+      email: "admin@upisense.com",
+      monthlyBudget: amount
+    };
+    
+    User.findOneAndUpdate.mockResolvedValue(mockUser);
+
+    const result = await executeTool("set_user_budget", { amount });
+
+    expect(result).toEqual({ success: true, newBudget: amount });
+    expect(User.findOneAndUpdate).toHaveBeenCalledWith(
+      { email: "admin@upisense.com" },
+      { monthlyBudget: amount },
+      { new: true, upsert: true }
+    );
   });
 });

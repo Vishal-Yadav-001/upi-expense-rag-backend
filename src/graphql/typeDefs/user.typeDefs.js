@@ -5,16 +5,19 @@ const userTypeDefs = gql`
     id: ID!
     name: String!
     email: String!
+    monthlyBudget: Float
     createdAt: String!
     updatedAt: String!
   }
 
-  type Query {
+  extend type Query {
     users: [User!]!
+    me: User
   }
 
-  type Mutation {
+  extend type Mutation {
     createUser(name: String!, email: String!, password: String!): User!
+    updateUserBudget(amount: Float!): User
   }
 `;
 

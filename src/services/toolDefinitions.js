@@ -198,6 +198,20 @@ const toolDefinitions = [
       required: [],
     },
   },
+  {
+    name: "set_user_budget",
+    description: "Updates the user's monthly spending limit (budget). Use this when the user asks to set, change, or update their budget.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        amount: {
+          type: Type.NUMBER,
+          description: "The new monthly budget amount (e.g. 20000)"
+        }
+      },
+      required: ["amount"]
+    }
+  },
 ];
 
 module.exports = toolDefinitions;

@@ -5,6 +5,10 @@ const userResolvers = {
     users: async () => {
       throw new Error("The users query is disabled until authentication is implemented.");
     },
+    me: async () => {
+      // Temporary mock user until full auth is implemented
+      return await User.findOne({ email: "admin@upisense.com" });
+    },
   },
 
   Mutation: {
@@ -16,7 +20,15 @@ const userResolvers = {
 
         const newUser = await User.create({ name, email, password });
         return newUser;
-    }
+    },
+    updateUserBudget: async (root, { amount }) => {
+      // Temporary logic updating the mock admin user
+      return await User.findOneAndUpdate(
+        { email: "admin@upisense.com" },
+        { $set: { monthlyBudget: amount } },
+        { new: true, upsert: true, setDefaultsOnInsert: true }
+      );
+    },
   }
 };
 

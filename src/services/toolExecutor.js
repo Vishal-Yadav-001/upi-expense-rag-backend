@@ -5,6 +5,7 @@ const {
   getUpcomingSubscriptions,
 } = require("./insightsService");
 const Transaction = require("../models/Transaction");
+const User = require("../models/User");
 const { generateEmbedding } = require("./embeddingService");
 const FinancialSummary = require("../models/FinancialSummary");
 
@@ -211,6 +212,16 @@ async function executeTool(toolName, args = {}) {
         transactionCount: s.data.transactionCount,
         topCategories: s.data.topCategories
       }));
+    }
+
+    case "set_user_budget": {
+      const { amount } = args;
+      const user = await User.findOneAndUpdate(
+        { email: "admin@upisense.com" },
+        { monthlyBudget: amount },
+        { new: true, upsert: true }
+      );
+      return { success: true, newBudget: user.monthlyBudget };
     }
 
     default:
