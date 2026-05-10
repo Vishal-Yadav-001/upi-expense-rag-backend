@@ -47,6 +47,10 @@ const transactionSchema = new mongoose.Schema(
     embedding: {
       type: [Number],
       index: true,
+    },
+    embeddingMetadata: {
+      merchant: String,
+      category: String
     }
   },
   { timestamps: true }
