@@ -133,6 +133,10 @@ async function processUpiImport({ filePath, originalFileName, source, sessionId,
               sessionId,
               importBatchId: batch._id,
               embedding,
+              embeddingMetadata: {
+                merchant: payee.displayName,
+                category: payee.category
+              }
             },
           },
           upsert: true,
