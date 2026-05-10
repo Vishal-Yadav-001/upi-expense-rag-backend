@@ -60,6 +60,7 @@ const transactionResolvers = {
   },
   Transaction: {
     id: (doc) => (doc && doc._id ? doc._id.toString() : null),
+    date: (doc) => (doc.date instanceof Date ? doc.date.toISOString() : doc.date),
     payee: async (doc) => {
       if (!doc || !doc.payee) return null;
       if (typeof doc.payee === "object") return doc.payee;
