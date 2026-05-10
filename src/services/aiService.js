@@ -70,19 +70,49 @@ function formatAIError(err, { hasUserApiKey = false } = {}) {
  * - Always mention the time period the answer covers
  * - Be concise - 2-4 sentences unless the user asks for a list
  */
+// const SYSTEM_PROMPT = `You are a personal finance assistant for Indian UPI transactions.
+
+// ${getDatabaseSchema()}
+
+// Rules you must always follow:
+// 1. Always use the Rs symbol for amounts. Format large numbers in Indian style (e.g. Rs 1,20,000 not Rs 120,000).
+// 2. Only use exact numbers returned by tools. Never estimate, guess, or hallucinate figures.
+// 3. If a tool returns an empty array or no data, say "I don't have enough data to answer that" - do not make up an answer.
+// 4. Always mention the time period your answer covers when relevant (e.g. "this month", "in the last 3 months").
+// 5. Be concise. 2-4 sentences for simple questions. Use bullet points only when listing 3+ items.
+// 6. If the user asks about a specific payee or merchant, look for it in the tool results - do not assume it exists.
+// 7. For broad questions about spending trends, total monthly budget, or comparing months (e.g. "how much did I spend this year?"), ALWAYS use "get_financial_summary" first. It provides pre-calculated, accurate aggregates. Adjust the "limit" parameter based on how far back the user is asking (e.g. limit: 12 for a year).
+// 8. For complex questions that static tools cannot answer, use "query_database" with a valid MongoDB aggregation pipeline.`;
 const SYSTEM_PROMPT = `You are a personal finance assistant for Indian UPI transactions.
 
 ${getDatabaseSchema()}
 
 Rules you must always follow:
+
 1. Always use the Rs symbol for amounts. Format large numbers in Indian style (e.g. Rs 1,20,000 not Rs 120,000).
 2. Only use exact numbers returned by tools. Never estimate, guess, or hallucinate figures.
 3. If a tool returns an empty array or no data, say "I don't have enough data to answer that" - do not make up an answer.
 4. Always mention the time period your answer covers when relevant (e.g. "this month", "in the last 3 months").
 5. Be concise. 2-4 sentences for simple questions. Use bullet points only when listing 3+ items.
 6. If the user asks about a specific payee or merchant, look for it in the tool results - do not assume it exists.
-7. For broad questions about spending trends, total monthly budget, or comparing months (e.g. "how much did I spend this year?"), ALWAYS use "get_financial_summary" first. It provides pre-calculated, accurate aggregates.
-8. For complex questions that static tools cannot answer, use "query_database" with a valid MongoDB aggregation pipeline.`;
+7. For broad questions about spending trends, total monthly budget, or comparing months (e.g. "how much did I spend this year?"), ALWAYS use "get_financial_summary" first. It provides pre-calculated, accurate aggregates. Adjust the "limit" parameter based on how far back the user is asking (e.g. limit: 12 for a year).
+8. For complex questions that static tools cannot answer, use "query_database" with a valid MongoDB aggregation pipeline.
+
+9. SMART DEFAULTS — Never ask for clarification on these; just assume and state it:
+   - "debit or credit?" → assume DEBIT (money spent) unless the user mentions income, received, or earnings.
+   - "which time period?" → assume the LAST 3 MONTHS unless the user specifies otherwise.
+   - "should I categorise?" → YES, always group by category unless the user asks for a flat list.
+   - "top N?" → assume TOP 10 unless specified.
+   Apply the default, answer immediately, then add one line: "I've shown debit transactions — say 'credit' to switch."
+
+10. INFER FROM CONTEXT — Before asking anything, re-read the user's message for implicit signals:
+    - "where am I spending" / "what am I paying" → debit
+    - "what am I receiving" / "who pays me" / "income" → credit
+    - "this month" / "last month" / "this year" → use that exact window
+    - a payee name → filter to that payee; don't ask which one
+    If you can infer the answer, infer it. Do not ask.
+
+11. ONE CLARIFICATION MAX — If you genuinely cannot answer without one missing piece of information, ask ONLY that one question — never a list of questions. If you asked a clarifying question in a previous turn, treat the user's reply as the answer to that question AND all future similar questions in this session. Do not re-ask the same type of question twice.`;
 
 /**
  * Main AI function - sends a question to Gemini with tool definitions,
@@ -100,6 +130,111 @@ Rules you must always follow:
  * @param {{ modelName?: string, apiKey?: string }} [options] - Optional Gemini config
  * @returns {Promise<{ answer: string, toolsUsed: string[], data: string|null }>}
  */
+// async function askAI(question, sessionId, options = {}) {
+//   const modelName = options.modelName || DEFAULT_MODEL;
+//   const hasUserApiKey = Boolean(options.apiKey && options.apiKey.trim());
+
+//   try {
+//     const ai = getAI(options.apiKey);
+//     if (!ai) {
+//       return {
+//         answer: "AI is not configured yet. Add GEMINI_API_KEY to use this feature.",
+//         toolsUsed: [],
+//         data: null,
+//       };
+//     }
+
+//     const config = {
+//       tools: [{ functionDeclarations: toolDefinitions }],
+//       systemInstruction: SYSTEM_PROMPT,
+//       // Cap output to avoid runaway token usage (guardrail: output_tokens < 300)
+//       generationConfig: { maxOutputTokens: 400 },
+//     };
+
+//     // Build the conversation - starts with just the user's question
+//     const contents = [
+//       { role: "user", parts: [{ text: question }] },
+//     ];
+
+//     // Step 1 & 2: Send to Gemini - it will respond with a function call or a direct answer
+//     const response = await ai.models.generateContent({
+//       model: modelName,
+//       contents,
+//       config,
+//     });
+
+//     // If Gemini answered directly without calling any tool, return it as-is
+//     const functionCalls = response.functionCalls;
+//     if (!functionCalls || functionCalls.length === 0) {
+//       return { answer: response.text, toolsUsed: [], data: null };
+//     }
+
+//     // Step 3: Execute every tool Gemini requested (Gemini can call multiple tools at once)
+//     const toolsUsed = [];
+//     const allData = {};
+//     const functionResponseParts = [];
+
+//     for (const toolCall of functionCalls) {
+//       toolsUsed.push(toolCall.name);
+//       console.log(`[aiService] Executing tool: ${toolCall.name}`, toolCall.args);
+
+//       let result;
+//       try {
+//         result = await executeTool(toolCall.name, { ...toolCall.args, sessionId });
+//       } catch (toolErr) {
+//         // Tool execution failed - return safe fallback, do not hallucinate
+//         console.error(`[aiService] Tool ${toolCall.name} failed:`, toolErr.message);
+
+//         return {
+//           answer: "I encountered an error fetching your data. Please try again.",
+//           toolsUsed,
+//           data: null,
+//         };
+//       }
+
+//       allData[toolCall.name] = result;
+
+//       // Each tool result is packaged as a functionResponse part per Gemini docs
+//       functionResponseParts.push({
+//         functionResponse: {
+//           name: toolCall.name,
+//           response: { result },
+//           id: toolCall.id,
+//         },
+//       });
+//     }
+
+//     // Step 4: Append model's function call response + our tool results to the conversation
+//     contents.push(response.candidates[0].content); // Gemini's function call message
+//     contents.push({ role: "user", parts: functionResponseParts }); // Our tool results
+
+//     // Step 5: Ask Gemini to compose a final natural language answer from the tool data
+//     const finalResponse = await ai.models.generateContent({
+//       model: modelName,
+//       contents,
+//       config,
+//     });
+
+//     return {
+//       answer: finalResponse.text,
+//       toolsUsed,
+//       // Raw data stringified so the frontend can optionally render source data cards
+//       data: JSON.stringify(allData),
+//     };
+//   } catch (err) {
+//     // Top-level catch: Gemini API error, network timeout, etc.
+//     console.error("[aiService] askAI failed:", err.message);
+//     return {
+//       answer: formatAIError(err, { hasUserApiKey }),
+//       toolsUsed: [],
+//       data: null,
+//     };
+//   }
+// }
+
+// Store history per session (outside the function)
+const sessionHistories = new Map();
+
 async function askAI(question, sessionId, options = {}) {
   const modelName = options.modelName || DEFAULT_MODEL;
   const hasUserApiKey = Boolean(options.apiKey && options.apiKey.trim());
@@ -117,29 +252,38 @@ async function askAI(question, sessionId, options = {}) {
     const config = {
       tools: [{ functionDeclarations: toolDefinitions }],
       systemInstruction: SYSTEM_PROMPT,
-      // Cap output to avoid runaway token usage (guardrail: output_tokens < 300)
       generationConfig: { maxOutputTokens: 400 },
     };
 
-    // Build the conversation - starts with just the user's question
+    // Get or create history for this session
+    if (!sessionHistories.has(sessionId)) {
+      sessionHistories.set(sessionId, []);
+    }
+    const history = sessionHistories.get(sessionId);
+
+    // Build contents: full history + current question
     const contents = [
+      ...history,
       { role: "user", parts: [{ text: question }] },
     ];
 
-    // Step 1 & 2: Send to Gemini - it will respond with a function call or a direct answer
     const response = await ai.models.generateContent({
       model: modelName,
       contents,
       config,
     });
 
-    // If Gemini answered directly without calling any tool, return it as-is
     const functionCalls = response.functionCalls;
     if (!functionCalls || functionCalls.length === 0) {
+      // No tool call — save the exchange to history and return
+      history.push({ role: "user", parts: [{ text: question }] });
+      history.push(response.candidates[0].content);
+      trimHistory(history);
+
       return { answer: response.text, toolsUsed: [], data: null };
     }
 
-    // Step 3: Execute every tool Gemini requested (Gemini can call multiple tools at once)
+    // Tool calls — execute them
     const toolsUsed = [];
     const allData = {};
     const functionResponseParts = [];
@@ -152,9 +296,7 @@ async function askAI(question, sessionId, options = {}) {
       try {
         result = await executeTool(toolCall.name, { ...toolCall.args, sessionId });
       } catch (toolErr) {
-        // Tool execution failed - return safe fallback, do not hallucinate
         console.error(`[aiService] Tool ${toolCall.name} failed:`, toolErr.message);
-
         return {
           answer: "I encountered an error fetching your data. Please try again.",
           toolsUsed,
@@ -163,8 +305,6 @@ async function askAI(question, sessionId, options = {}) {
       }
 
       allData[toolCall.name] = result;
-
-      // Each tool result is packaged as a functionResponse part per Gemini docs
       functionResponseParts.push({
         functionResponse: {
           name: toolCall.name,
@@ -174,31 +314,49 @@ async function askAI(question, sessionId, options = {}) {
       });
     }
 
-    // Step 4: Append model's function call response + our tool results to the conversation
-    contents.push(response.candidates[0].content); // Gemini's function call message
-    contents.push({ role: "user", parts: functionResponseParts }); // Our tool results
+    // Build the full tool-call exchange
+    const modelFunctionCallContent = response.candidates[0].content;
+    const toolResultContent = { role: "user", parts: functionResponseParts };
 
-    // Step 5: Ask Gemini to compose a final natural language answer from the tool data
+    const finalContents = [
+      ...contents,
+      modelFunctionCallContent,
+      toolResultContent,
+    ];
+
     const finalResponse = await ai.models.generateContent({
       model: modelName,
-      contents,
+      contents: finalContents,
       config,
     });
+
+    // Save the entire exchange to history (user Q → tool call → tool result → final answer)
+    history.push({ role: "user", parts: [{ text: question }] });
+    history.push(modelFunctionCallContent);
+    history.push(toolResultContent);
+    history.push(finalResponse.candidates[0].content);
+    trimHistory(history);
 
     return {
       answer: finalResponse.text,
       toolsUsed,
-      // Raw data stringified so the frontend can optionally render source data cards
       data: JSON.stringify(allData),
     };
+
   } catch (err) {
-    // Top-level catch: Gemini API error, network timeout, etc.
     console.error("[aiService] askAI failed:", err.message);
     return {
       answer: formatAIError(err, { hasUserApiKey }),
       toolsUsed: [],
       data: null,
     };
+  }
+}
+
+// Keep last 20 content entries (~5 exchanges with tool calls)
+function trimHistory(history, max = 20) {
+  if (history.length > max) {
+    history.splice(0, history.length - max);
   }
 }
 

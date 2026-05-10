@@ -42,6 +42,22 @@ async function reindexTransactions(payeeId, newCategory) {
 }
 
 const payeeResolvers = {
+  Query: {
+    availableCategories: async (_, __, context) => {
+      const fixedCategories = ["Food", "Shopping", "Travel", "Health", "Investment", "Salary", "Rent", "Bill", "Other"];
+      const { sessionId } = context;
+
+      // Get unique categories currently used in this session's payees
+      const payeesForSession = await Transaction.distinct("payee", { sessionId });
+      const dynamicCategories = await Payee.distinct("category", { 
+        _id: { $in: payeesForSession },
+        category: { $ne: "UNCATEGORIZED" }
+      });
+
+      const allCategories = new Set([...fixedCategories, ...dynamicCategories]);
+      return Array.from(allCategories);
+    }
+  },
   Mutation: {
     categorizePayee: async (_, { payeeId, category }) => {
       const payee = await Payee.findById(payeeId);
@@ -61,6 +77,26 @@ const payeeResolvers = {
           console.error("Background reindexing error:", err)
         );
       }
+
+      return payee;
+    },
+    updatePayeeCategory: async (_, { payeeId, category }, context) => {
+      const { sessionId } = context;
+
+      // Scoping: Ensure user has a transaction with this payee
+      const hasTransaction = await Transaction.exists({ payee: payeeId, sessionId });
+      if (!hasTransaction) {
+        throw new Error("Payee not found or not associated with this session");
+      }
+
+      const payee = await Payee.findById(payeeId);
+      if (!payee) {
+        throw new Error("Payee not found");
+      }
+
+      payee.category = category;
+      payee.confidence = 0.9; // user-confirmed
+      await payee.save();
 
       return payee;
     },

@@ -17,8 +17,12 @@ const payeeTypeDefs = gql`
 
   extend type Mutation {
     categorizePayee(payeeId: ID!, category: String!): Payee
-
     confirmPayeeCategory(payeeId: ID!, category: String!): Payee
+    updatePayeeCategory(payeeId: ID!, category: String!): Payee
+  }
+
+  extend type Query {
+    availableCategories: [String!]!
   }
 `;
 

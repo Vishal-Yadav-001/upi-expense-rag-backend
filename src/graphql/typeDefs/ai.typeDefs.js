@@ -7,8 +7,15 @@ const aiTypeDefs = gql`
     data: String
   }
 
+  type SyncResult {
+    success: Boolean
+    updatedTransactions: Int
+    updatedSummaries: Int
+  }
+
   extend type Mutation {
     askAI(question: String!, model: String, apiKey: String): AIResponse!
+    syncAIPatterns: SyncResult
   }
 `;
 
