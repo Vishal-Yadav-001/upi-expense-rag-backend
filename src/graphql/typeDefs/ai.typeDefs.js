@@ -13,8 +13,13 @@ const aiTypeDefs = gql`
     updatedSummaries: Int
   }
 
+  input ChatMessage {
+    role: String!
+    content: String!
+  }
+
   extend type Mutation {
-    askAI(question: String!, model: String, apiKey: String): AIResponse!
+    askAI(question: String!, history: [ChatMessage], model: String, apiKey: String): AIResponse!
     syncAIPatterns: SyncResult
   }
 `;

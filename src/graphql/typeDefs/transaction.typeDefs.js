@@ -12,15 +12,6 @@ const transactionTypeDefs = gql`
     UNKNOWN
   }
 
-  type Payee {
-    id: ID!
-    displayName: String!
-    hashedName: String
-    normalizedName: String
-    category: String
-    confidence: Float
-  }
-
   type Transaction {
     id: ID!
     name: String
@@ -33,7 +24,7 @@ const transactionTypeDefs = gql`
     payee: Payee
   }
 
-  type Query {
+  extend type Query {
     transactions(
       status: TransactionStatus
       direction: TransactionDirection

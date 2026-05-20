@@ -3,7 +3,7 @@ const { syncSessionData } = require("../../services/syncService");
 
 const aiResolvers = {
   Mutation: {
-    askAI: async (_, { question, model, apiKey }, context) => {
+    askAI: async (_, { question, history, model, apiKey }, context) => {
       if (!question || question.trim().length === 0) {
         throw new Error("Question cannot be empty");
       }
@@ -11,6 +11,7 @@ const aiResolvers = {
       return askAI(question.trim(), context.sessionId, {
         modelName: model,
         apiKey,
+        history, // Pass history from the frontend
       });
     },
     syncAIPatterns: async (_, __, context) => {

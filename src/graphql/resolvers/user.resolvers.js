@@ -7,7 +7,24 @@ const userResolvers = {
     },
     me: async () => {
       // Temporary mock user until full auth is implemented
-      return await User.findOne({ email: "admin@upisense.com" });
+      // Force name to be present via findOneAndUpdate with upsert
+      return await User.findOneAndUpdate(
+        { email: "admin@upisense.com" },
+        { 
+          $set: { name: "Admin User" },
+          $setOnInsert: { 
+            email: "admin@upisense.com",
+            password: "password123",
+            monthlyBudget: 50000
+          }
+        },
+        { 
+          new: true, 
+          upsert: true, 
+          runValidators: true,
+          setDefaultsOnInsert: true 
+        }
+      ).lean();
     },
   },
 
@@ -25,11 +42,23 @@ const userResolvers = {
       // Temporary logic updating the mock admin user
       return await User.findOneAndUpdate(
         { email: "admin@upisense.com" },
-        { $set: { monthlyBudget: amount } },
+        { 
+          $set: { monthlyBudget: amount },
+          $setOnInsert: { 
+            name: "Admin User",
+            password: "password123" 
+          }
+        },
         { new: true, upsert: true, setDefaultsOnInsert: true }
       );
     },
-  }
+  },
+
+  User: {
+    id: (doc) => (doc && doc._id ? doc._id.toString() : null),
+    createdAt: (doc) => (doc.createdAt instanceof Date ? doc.createdAt.toISOString() : doc.createdAt),
+    updatedAt: (doc) => (doc.updatedAt instanceof Date ? doc.updatedAt.toISOString() : doc.updatedAt),
+  },
 };
 
 module.exports = userResolvers;

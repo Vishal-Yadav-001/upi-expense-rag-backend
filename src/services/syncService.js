@@ -1,6 +1,9 @@
 const Transaction = require("../models/Transaction");
 const { generateBatchEmbeddings } = require("./embeddingService");
-const { generateMonthlySummary } = require("./summaryService");
+const { 
+  generateMonthlySummary, 
+  generateWeeklySummary 
+} = require("./summaryService");
 
 /**
  * Synchronizes session data by identifying "stale" transactions 
@@ -45,6 +48,7 @@ async function syncSessionData(sessionId) {
   const chunkSize = 50;
   let totalUpdated = 0;
   const uniqueMonths = new Set();
+  const uniqueWeeks = new Set();
 
   for (let i = 0; i < staleTransactions.length; i += chunkSize) {
     const chunk = staleTransactions.slice(i, i + chunkSize);
@@ -59,10 +63,19 @@ async function syncSessionData(sessionId) {
 
     // Prepare bulk updates
     const bulkOps = chunk.map((tx, index) => {
-      // Collect months for summary updates
+      // Collect periods for summary updates
       const date = new Date(tx.date);
+      
       const monthStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
       uniqueMonths.add(monthStr);
+
+      const d = new Date(date);
+      d.setHours(0, 0, 0, 0);
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      const monday = new Date(d.setDate(diff));
+      const weekStr = monday.toISOString().split("T")[0];
+      uniqueWeeks.add(weekStr);
 
       return {
         updateOne: {
@@ -84,15 +97,20 @@ async function syncSessionData(sessionId) {
     totalUpdated += (result.modifiedCount || 0);
   }
 
-  // 4. Update summaries for affected months
+  // 4. Update summaries for affected periods
   console.log(`[syncService] Updating summaries for months: ${[...uniqueMonths].join(", ")}`);
   for (const monthStr of uniqueMonths) {
     await generateMonthlySummary(sessionId, monthStr);
   }
 
+  console.log(`[syncService] Updating summaries for weeks: ${[...uniqueWeeks].join(", ")}`);
+  for (const weekStr of uniqueWeeks) {
+    await generateWeeklySummary(sessionId, weekStr);
+  }
+
   return {
     updatedTransactions: totalUpdated,
-    updatedSummaries: uniqueMonths.size
+    updatedSummaries: uniqueMonths.size + uniqueWeeks.size
   };
 }
 

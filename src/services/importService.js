@@ -5,7 +5,10 @@ const ImportBatch = require("../models/ImportBatch");
 const Payee = require("../models/Payee");
 const { maskName, normalizeName } = require("./payeeService");
 const { generateBatchEmbeddings } = require("./embeddingService");
-const { generateMonthlySummary } = require("./summaryService");
+const { 
+  generateMonthlySummary, 
+  generateWeeklySummary 
+} = require("./summaryService");
 
 /**
  * Main service to process a UPI PDF import.
@@ -163,17 +166,35 @@ async function processUpiImport({ filePath, originalFileName, source, sessionId,
       .map(([hash]) => hash);
     await batch.save();
 
-    // 8. Generate Summaries for affected months
+    // 8. Generate Summaries for affected periods
     const uniqueMonths = new Set();
+    const uniqueWeeks = new Set();
+
     transactions.forEach(tx => {
       const date = new Date(tx.date);
+      
+      // Monthly string: YYYY-MM
       const monthStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
       uniqueMonths.add(monthStr);
+
+      // Weekly string: YYYY-MM-DD of Monday
+      const d = new Date(date);
+      d.setHours(0, 0, 0, 0);
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      const monday = new Date(d.setDate(diff));
+      const weekStr = monday.toISOString().split("T")[0];
+      uniqueWeeks.add(weekStr);
     });
 
     console.log("[importService] Updating summaries for months:", [...uniqueMonths]);
     for (const monthStr of uniqueMonths) {
       await generateMonthlySummary(sessionId, monthStr);
+    }
+
+    console.log("[importService] Updating summaries for weeks:", [...uniqueWeeks]);
+    for (const weekStr of uniqueWeeks) {
+      await generateWeeklySummary(sessionId, weekStr);
     }
 
     return {

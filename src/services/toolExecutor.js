@@ -22,24 +22,28 @@ const FinancialSummary = require("../models/FinancialSummary");
  */
 
 /**
- * Validates that a date string is a valid ISO date (YYYY-MM-DD).
- * Rejects bad inputs before they reach MongoDB to prevent query errors.
+ * Validates that a date string is a valid date (supports YYYY-MM-DD and ISO strings).
+ * Returns the normalized YYYY-MM-DD string or throws if invalid.
  */
-function isValidDate(str) {
-  if (!str) return true; // optional fields are fine
-  return /^\d{4}-\d{2}-\d{2}$/.test(str) && !isNaN(new Date(str).getTime());
+function normalizeDate(str) {
+  if (!str) return null;
+  const d = new Date(str);
+  if (isNaN(d.getTime())) {
+    throw new Error(`Invalid date: "${str}". Please use YYYY-MM-DD format.`);
+  }
+  return d.toISOString().split("T")[0];
 }
 
 async function executeTool(toolName, args = {}) {
-  // Validate date args on every tool that accepts them
-  if (args.fromDate && !isValidDate(args.fromDate)) {
-    throw new Error(`Invalid fromDate: "${args.fromDate}". Use YYYY-MM-DD format.`);
-  }
-  if (args.toDate && !isValidDate(args.toDate)) {
-    throw new Error(`Invalid toDate: "${args.toDate}". Use YYYY-MM-DD format.`);
-  }
-
   const { sessionId } = args;
+
+  // Normalize date args on every tool that accepts them
+  try {
+    if (args.fromDate) args.fromDate = normalizeDate(args.fromDate);
+    if (args.toDate) args.toDate = normalizeDate(args.toDate);
+  } catch (err) {
+    throw err;
+  }
 
   switch (toolName) {
     case "get_monthly_spend": {

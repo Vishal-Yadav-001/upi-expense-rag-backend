@@ -2,14 +2,18 @@ const Payee = require("../../models/Payee");
 const Transaction = require("../../models/Transaction");
 const { updatePayeeConfidence } = require("../../services/payeeService");
 const { generateBatchEmbeddings } = require("../../services/embeddingService");
+const { generateMonthlySummary } = require("../../services/summaryService");
 
 /**
  * Background worker to update embeddings for all transactions of a payee.
  * This is async and does not block the GraphQL response.
  */
-async function reindexTransactions(payeeId, newCategory) {
+async function reindexTransactions(payeeId, newCategory, sessionId) {
   try {
-    const transactions = await Transaction.find({ payee: payeeId });
+    const query = { payee: payeeId };
+    if (sessionId) query.sessionId = sessionId;
+
+    const transactions = await Transaction.find(query);
     if (transactions.length === 0) return;
 
     console.log(`[reindex] Updating ${transactions.length} transactions for payee ${payeeId} to category: ${newCategory}`);
@@ -17,7 +21,9 @@ async function reindexTransactions(payeeId, newCategory) {
     const payee = await Payee.findById(payeeId);
     const displayName = payee?.displayName || "Unknown";
 
+    const uniqueMonths = new Set();
     const chunkSize = 50;
+
     for (let i = 0; i < transactions.length; i += chunkSize) {
       const chunk = transactions.slice(i, i + chunkSize);
       const embeddingStrings = chunk.map(tx => 
@@ -26,16 +32,40 @@ async function reindexTransactions(payeeId, newCategory) {
 
       const embeddings = await generateBatchEmbeddings(embeddingStrings);
 
-      const ops = chunk.map((tx, idx) => ({
-        updateOne: {
-          filter: { _id: tx._id },
-          update: { $set: { embedding: embeddings[idx] } }
-        }
-      }));
+      const ops = chunk.map((tx, idx) => {
+        // Collect months for summary updates
+        const date = new Date(tx.date);
+        const monthStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+        uniqueMonths.add(monthStr);
+
+        return {
+          updateOne: {
+            filter: { _id: tx._id },
+            update: { 
+              $set: { 
+                embedding: embeddings[idx],
+                embeddingMetadata: {
+                  merchant: displayName,
+                  category: newCategory
+                }
+              } 
+            }
+          }
+        };
+      });
 
       await Transaction.bulkWrite(ops);
     }
-    console.log(`[reindex] Successfully updated ${transactions.length} transactions.`);
+    
+    // Update summaries for all affected months to reflect the new category in analytics
+    if (sessionId) {
+      console.log(`[reindex] Updating summaries for ${uniqueMonths.size} months in session ${sessionId}`);
+      for (const monthStr of uniqueMonths) {
+        await generateMonthlySummary(sessionId, monthStr);
+      }
+    }
+
+    console.log(`[reindex] Successfully updated ${transactions.length} transactions and summaries.`);
   } catch (error) {
     console.error(`[reindex] Failed to reindex transactions for payee ${payeeId}:`, error.message);
   }
@@ -59,7 +89,8 @@ const payeeResolvers = {
     }
   },
   Mutation: {
-    categorizePayee: async (_, { payeeId, category }) => {
+    categorizePayee: async (_, { payeeId, category }, context) => {
+      const { sessionId } = context;
       const payee = await Payee.findById(payeeId);
       if (!payee) {
         throw new Error("Payee not found");
@@ -73,7 +104,7 @@ const payeeResolvers = {
       // Trigger re-indexing in the background if category actually changed
       if (oldCategory !== category) {
         // We do NOT await this, so the UI updates instantly
-        reindexTransactions(payeeId, category).catch(err => 
+        reindexTransactions(payeeId, category, sessionId).catch(err => 
           console.error("Background reindexing error:", err)
         );
       }
@@ -94,9 +125,17 @@ const payeeResolvers = {
         throw new Error("Payee not found");
       }
 
+      const oldCategory = payee.category;
       payee.category = category;
       payee.confidence = 0.9; // user-confirmed
       await payee.save();
+
+      // Trigger re-indexing in the background if category actually changed
+      if (oldCategory !== category) {
+        reindexTransactions(payeeId, category, sessionId).catch(err => 
+          console.error("Background reindexing error:", err)
+        );
+      }
 
       return payee;
     },

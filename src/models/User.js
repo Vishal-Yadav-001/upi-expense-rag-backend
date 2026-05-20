@@ -39,10 +39,9 @@ function hashPassword(raw) {
   return `pbkdf2$${salt}$${hash}`;
 }
 
-userSchema.pre("save", function (next) {
-  if (!this.isModified("password")) return next();
+userSchema.pre("save", async function () {
+  if (!this.isModified("password")) return;
   this.password = hashPassword(this.password);
-  return next();
 });
 
 module.exports = mongoose.model("User",userSchema);

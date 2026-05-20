@@ -1,5 +1,6 @@
 const { mergeTypeDefs, mergeResolvers } = require('@graphql-tools/merge');
 
+const baseTypeDefs = require('./typeDefs/base.typeDefs');
 const userTypeDefs = require('./typeDefs/user.typeDefs');
 const userResolvers = require('./resolvers/user.resolvers');
 const transactionTypeDefs = require('./typeDefs/transaction.typeDefs');
@@ -19,6 +20,7 @@ const feedbackResolvers = require("./resolvers/feedback.resolvers");
 
 // Include payee typeDefs and resolvers
 const typeDefsArray = [
+  baseTypeDefs,
   userTypeDefs,
   transactionTypeDefs,
   payeeTypeDefs,

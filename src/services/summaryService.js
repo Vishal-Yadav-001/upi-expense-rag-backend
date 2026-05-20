@@ -2,16 +2,9 @@ const FinancialSummary = require("../models/FinancialSummary");
 const Transaction = require("../models/Transaction");
 
 /**
- * Generates or updates a monthly summary for a given session and month.
- * @param {string} sessionId - The session ID to scope the summary to.
- * @param {string} monthStr - Month in "YYYY-MM" format.
+ * Shared helper to update a financial summary document.
  */
-async function generateMonthlySummary(sessionId, monthStr) {
-  // monthStr format: "YYYY-MM"
-  const startDate = new Date(`${monthStr}-01`);
-  const endDate = new Date(startDate);
-  endDate.setMonth(startDate.getMonth() + 1);
-
+async function updateSummary(sessionId, type, period, startDate, endDate) {
   const stats = await Transaction.aggregate([
     { $match: { sessionId, date: { $gte: startDate, $lt: endDate }, status: "SUCCESS" } },
     {
@@ -43,7 +36,7 @@ async function generateMonthlySummary(sessionId, monthStr) {
   if (stats.length === 0) return null;
 
   return FinancialSummary.findOneAndUpdate(
-    { sessionId, type: "MONTHLY", period: monthStr },
+    { sessionId, type, period },
     {
       data: {
         totalDebit: stats[0].totalDebit,
@@ -55,6 +48,42 @@ async function generateMonthlySummary(sessionId, monthStr) {
     },
     { upsert: true, new: true }
   );
+}
+
+/**
+ * Generates or updates a monthly summary.
+ * @param {string} sessionId
+ * @param {string} monthStr - Month in "YYYY-MM" format.
+ */
+async function generateMonthlySummary(sessionId, monthStr) {
+  const startDate = new Date(`${monthStr}-01`);
+  const endDate = new Date(startDate);
+  endDate.setMonth(startDate.getMonth() + 1);
+  return updateSummary(sessionId, "MONTHLY", monthStr, startDate, endDate);
+}
+
+/**
+ * Generates or updates a weekly summary.
+ * @param {string} sessionId
+ * @param {string} weekStr - Start of week in "YYYY-MM-DD" format (usually Monday).
+ */
+async function generateWeeklySummary(sessionId, weekStr) {
+  const startDate = new Date(weekStr);
+  const endDate = new Date(startDate);
+  endDate.setDate(startDate.getDate() + 7);
+  return updateSummary(sessionId, "WEEKLY", weekStr, startDate, endDate);
+}
+
+/**
+ * Generates or updates a daily summary.
+ * @param {string} sessionId
+ * @param {string} dateStr - Date in "YYYY-MM-DD" format.
+ */
+async function generateDailySummary(sessionId, dateStr) {
+  const startDate = new Date(dateStr);
+  const endDate = new Date(startDate);
+  endDate.setDate(startDate.getDate() + 1);
+  return updateSummary(sessionId, "DAILY", dateStr, startDate, endDate);
 }
 
 async function getSummaries({ sessionId, type = "MONTHLY", limit = 12 }) {
@@ -75,4 +104,9 @@ async function getSummaries({ sessionId, type = "MONTHLY", limit = 12 }) {
   }));
 }
 
-module.exports = { generateMonthlySummary, getSummaries };
+module.exports = { 
+  generateMonthlySummary, 
+  generateWeeklySummary, 
+  generateDailySummary,
+  getSummaries 
+};
