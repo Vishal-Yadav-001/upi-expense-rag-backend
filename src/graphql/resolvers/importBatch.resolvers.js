@@ -2,8 +2,9 @@ const ImportBatch = require("../../models/ImportBatch");
 
 const importBatchResolvers = {
   Query: {
-    importBatches: async (_, { limit = 20 }) => {
-      return ImportBatch.find()
+    importBatches: async (_, { limit = 20 }, context) => {
+      const { sessionId } = context;
+      return ImportBatch.find({ sessionId })
         .sort({ createdAt: -1 })
         .limit(limit);
     },
