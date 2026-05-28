@@ -1,7 +1,7 @@
 const { syncSessionData } = require("./syncService");
 const Transaction = require("../models/Transaction");
 const { generateBatchEmbeddings } = require("./embeddingService");
-const { generateMonthlySummary } = require("./summaryService");
+const { generateMonthlySummary, generateWeeklySummary } = require("./summaryService");
 
 jest.mock("../models/Transaction");
 jest.mock("./embeddingService");
@@ -101,7 +101,7 @@ describe("syncService", () => {
 
     const result = await syncSessionData(sessionId);
 
-    expect(result).toEqual({ updatedTransactions: 2, updatedSummaries: 2 });
+    expect(result).toEqual({ updatedTransactions: 2, updatedSummaries: 4 });
 
     // Verify re-embedding strings
     expect(generateBatchEmbeddings).toHaveBeenCalledWith([
@@ -138,6 +138,8 @@ describe("syncService", () => {
     // Verify summary updates
     expect(generateMonthlySummary).toHaveBeenCalledWith(sessionId, "2024-01");
     expect(generateMonthlySummary).toHaveBeenCalledWith(sessionId, "2024-02");
+    expect(generateWeeklySummary).toHaveBeenCalledWith(sessionId, "2024-01-14");
+    expect(generateWeeklySummary).toHaveBeenCalledWith(sessionId, "2024-02-11");
   });
 
   test("should handle missing embeddingMetadata as stale", async () => {
