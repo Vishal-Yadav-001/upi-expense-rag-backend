@@ -2,6 +2,7 @@ const { GoogleGenAI } = require("@google/genai");
 const toolDefinitions = require("./toolDefinitions");
 const { executeTool } = require("./toolExecutor");
 const { getDatabaseSchema } = require("../utils/schemaContext");
+const { getOverallSummary } = require("./analyticsService");
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
 
@@ -132,9 +133,19 @@ async function askAI(question, sessionId, options = {}) {
       };
     }
 
+    // Fetch user's data timeline to anchor relative date calculations
+    const summary = await getOverallSummary({ sessionId });
+    const maxDate = summary.maxDate || new Date().toISOString().split('T')[0];
+    
+    const dynamicSystemPrompt = `${SYSTEM_PROMPT}
+
+12. DATA TIMELINE CONTEXT: The user's most recent transaction in the database is from ${maxDate}. 
+CRITICAL: When the user asks for relative time periods like "last month", "this month", "last 3 months", or "recent", you MUST calculate the fromDate and toDate relative to ${maxDate}, NOT the current real-world date. For example, if maxDate is 2024-03-15, "last month" means February 2024.
+IMPORTANT EXPLANATION: If you use this relative time shifting, you MUST briefly mention it in your response so the user understands why you chose those dates. (e.g., "Since your most recent records are from May 2024, here is your spending for the 3 months leading up to that.")`;
+
     const config = {
       tools: [{ functionDeclarations: toolDefinitions }],
-      systemInstruction: SYSTEM_PROMPT,
+      systemInstruction: dynamicSystemPrompt,
       generationConfig: { maxOutputTokens: 600 },
     };
 
