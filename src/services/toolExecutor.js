@@ -112,7 +112,11 @@ async function executeTool(toolName, args = {}) {
       if (fromDate || toDate) {
         query.date = {};
         if (fromDate) query.date.$gte = new Date(fromDate);
-        if (toDate) query.date.$lte = new Date(toDate);
+        if (toDate) {
+          const d = new Date(toDate);
+          d.setUTCHours(23, 59, 59, 999);
+          query.date.$lte = d;
+        }
       }
 
       const transactions = await Transaction.find(query)

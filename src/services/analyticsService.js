@@ -1,12 +1,18 @@
 const Transaction = require("../models/Transaction");
 
+function getEndOfDay(dateStr) {
+  const d = new Date(dateStr);
+  d.setUTCHours(23, 59, 59, 999);
+  return d;
+}
+
 async function totalSpendByCategory({ fromDate, toDate, sessionId }) {
   const match = { direction: "DEBIT", status: "SUCCESS", sessionId };
 
   if (fromDate || toDate) {
     match.date = {};
     if (fromDate) match.date.$gte = new Date(fromDate);
-    if (toDate) match.date.$lte = new Date(toDate);
+    if (toDate) match.date.$lte = getEndOfDay(toDate);
   }
 
   return Transaction.aggregate([
@@ -19,10 +25,10 @@ async function totalSpendByCategory({ fromDate, toDate, sessionId }) {
         as: "payee", // Place matched payee docs in "payee" array
       },
     },
-    { $unwind: "$payee" }, // Flatten the joined payee array
+    { $unwind: { path: "$payee", preserveNullAndEmptyArrays: true } }, // Flatten the joined payee array without dropping uncategorized txns
     {
       $group: {
-        _id: "$payee.category", // Group by payee category
+        _id: { $ifNull: ["$payee.category", "UNCATEGORIZED"] }, // Group by payee category, default to UNCATEGORIZED
         total: { $sum: "$amount" }, // Sum amounts per category
       },
     },
@@ -47,7 +53,7 @@ async function monthlySpend({ fromDate, toDate, sessionId }) {
   if (fromDate || toDate) {
     match.date = {};
     if (fromDate) match.date.$gte = new Date(fromDate);
-    if (toDate) match.date.$lte = new Date(toDate);
+    if (toDate) match.date.$lte = getEndOfDay(toDate);
   }
 
   return Transaction.aggregate([
