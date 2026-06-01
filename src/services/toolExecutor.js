@@ -149,6 +149,17 @@ async function executeTool(toolName, args = {}) {
         throw new Error("Pipeline must be an array");
       }
 
+      // SECURITY: Block destructive or leak-prone aggregation stages
+      const FORBIDDEN_STAGES = ["$out", "$merge", "$lookup", "$unionWith", "$function", "$accumulator"];
+      const hasForbiddenStage = parsedPipeline.some(stage => {
+        const stageName = Object.keys(stage)[0];
+        return FORBIDDEN_STAGES.includes(stageName);
+      });
+
+      if (hasForbiddenStage) {
+        throw new Error("Pipeline contains unauthorized operations. Read-only queries allowed.");
+      }
+
       // Security: Always scope to sessionId in the first stage
       const scopedPipeline = [{ $match: { sessionId } }, ...parsedPipeline];
 
@@ -225,7 +236,7 @@ async function executeTool(toolName, args = {}) {
     case "set_user_budget": {
       const { amount } = args;
       const user = await User.findOneAndUpdate(
-        { email: "admin@upisense.com" },
+        { sessionId: sessionId },
         { monthlyBudget: amount },
         { new: true, upsert: true }
       );
