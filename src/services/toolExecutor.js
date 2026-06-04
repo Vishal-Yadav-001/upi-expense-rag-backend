@@ -143,6 +143,8 @@ async function executeTool(toolName, args = {}) {
         };
       });
 
+      console.log(`[toolExecutor] get_transactions returned ${mappedTransactions.length} records totaling ${totalSum}. Names:`, mappedTransactions.map(t => t.payee));
+
       return {
         totalSumCalculated: totalSum,
         results: mappedTransactions,
@@ -232,6 +234,8 @@ async function executeTool(toolName, args = {}) {
       results.forEach((r) => {
         totalSum += r.amount;
       });
+
+      console.log(`[toolExecutor] semantic_search returned ${results.length} records totaling ${totalSum}. Names:`, results.map(t => t.payee));
 
       return {
         totalSumCalculated: totalSum,

@@ -99,7 +99,7 @@ const toolDefinitions = [
   {
     name: "get_transactions",
     description:
-      "Returns a filtered list of transactions. Use this when the user asks to see recent transactions, transactions in a date range, failed transactions, or credits/debits.",
+      "Returns an exact list of transactions and their total sum. ALWAYS use this (with the merchantName parameter) when the user asks about a specific merchant, company, or payee. Do NOT use semantic_search for specific merchants.",
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -166,7 +166,7 @@ const toolDefinitions = [
   {
     name: "semantic_search",
     description:
-      "Find transactions using fuzzy or meaning-based search. Use this when the user asks about categories like 'coffee', 'recent food orders', 'travel expenses', or specific topics that might not match exact merchant names.",
+      "Find transactions using fuzzy or meaning-based search. Use this ONLY for broad topics like 'food', 'travel', or 'utilities'. Do NOT use this tool if the user asks for a specific merchant name (use get_transactions with merchantName instead).",
     parameters: {
       type: Type.OBJECT,
       properties: {
