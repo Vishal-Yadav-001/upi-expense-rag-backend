@@ -5,6 +5,7 @@ const {
   getUpcomingSubscriptions,
 } = require("./insightsService");
 const Transaction = require("../models/Transaction");
+const Payee = require("../models/Payee");
 const User = require("../models/User");
 const { generateEmbedding } = require("./embeddingService");
 const FinancialSummary = require("../models/FinancialSummary");
@@ -110,10 +111,20 @@ async function executeTool(toolName, args = {}) {
       if (status) query.status = status;
       if (direction) query.direction = direction;
       if (merchantName) {
-        // Search the raw transaction name for matches
-        query.name = { $regex: merchantName, $options: "i" };
+        // Search payees first in case the user renamed the merchant or it's masked
+        const matchingPayees = await Payee.find({
+          sessionId,
+          displayName: { $regex: merchantName, $options: "i" }
+        }, "_id").lean();
+        
+        const payeeIds = matchingPayees.map(p => p._id);
+        
+        // Match either the raw transaction name OR any matching payee reference
+        query.$or = [
+          { name: { $regex: merchantName, $options: "i" } },
+          { payee: { $in: payeeIds } }
+        ];
       }
-      
       if (fromDate || toDate) {
         query.date = {};
         if (fromDate) query.date.$gte = new Date(fromDate);
