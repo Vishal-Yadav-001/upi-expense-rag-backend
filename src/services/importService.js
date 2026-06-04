@@ -79,25 +79,10 @@ async function processUpiImport({ filePath, originalFileName, source, sessionId,
       }
     }
 
-    // 4. Generate Embeddings for all transactions
-    console.log("[importService] Generating embeddings for transactions...");
-    const embeddingStrings = transactions.map(tx => {
-      const payee = payeeMap.get(tx.hashedName);
-      const merchant = payee ? payee.displayName : tx.name;
-      const category = payee ? payee.category : "UNCATEGORIZED";
-      return `Merchant: ${merchant}, Category: ${category}, Amount: ${tx.amount}`;
-    });
-
-    // Process in chunks to avoid API limits (e.g., 50 per call)
-    const chunkSize = 50;
-    const allEmbeddings = [];
-    for (let i = 0; i < embeddingStrings.length; i += chunkSize) {
-      const chunk = embeddingStrings.slice(i, i + chunkSize);
-      console.log(`[importService] Embedding chunk ${i / chunkSize + 1}/${Math.ceil(embeddingStrings.length / chunkSize)}`);
-      const embeddings = await generateBatchEmbeddings(chunk, apiKeyOverride);
-      allEmbeddings.push(...embeddings);
-    }
-
+    // 4. Removed Inline Embeddings (Deferred to Background Job)
+    // To avoid Gemini API rate limits on the free tier, we no longer
+    // embed during import. Transactions are created with `embedding: null`
+    // and processed by `embeddingJob.js` in the background.
     // 5. Prepare Transaction Operations with Deduplication
     console.log("[importService] Preparing bulk write for transactions...");
     const ops = [];
@@ -106,7 +91,6 @@ async function processUpiImport({ filePath, originalFileName, source, sessionId,
 
     for (let i = 0; i < transactions.length; i++) {
       const tx = transactions[i];
-      const embedding = allEmbeddings[i];
       const payee = payeeMap.get(tx.hashedName);
       if (!payee) continue; // Should not happen
 
@@ -137,7 +121,7 @@ async function processUpiImport({ filePath, originalFileName, source, sessionId,
               sourceHash,
               sessionId,
               importBatchId: batch._id,
-              embedding,
+              embedding: null,
               embeddingMetadata: {
                 merchant: payee.displayName,
                 category: payee.category

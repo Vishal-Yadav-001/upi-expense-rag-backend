@@ -4,9 +4,11 @@ const { typeDefs, resolvers } = require("./graphql");
 const connectDB = require("./config/db");
 const { createApp } = require("./app");
 const { resolveSessionId } = require("./middleware/resolveSessionId");
+const embeddingJob = require("./jobs/embeddingJob");
 
 async function startServer() {
   await connectDB();
+  embeddingJob.start();
   const app = createApp();
 
   const apolloServer = new ApolloServer({

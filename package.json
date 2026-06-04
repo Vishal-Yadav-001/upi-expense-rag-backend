@@ -16,7 +16,6 @@
     "@clerk/clerk-sdk-node": "^4.13.23",
     "@google/genai": "^1.52.0",
     "@graphql-tools/merge": "^9.1.7",
-    "@huggingface/transformers": "^4.2.0",
     "apollo-server-express": "^3.13.0",
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",

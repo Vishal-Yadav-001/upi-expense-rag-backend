@@ -26,11 +26,8 @@ async function reindexTransactions(payeeId, newCategory, sessionId) {
 
     for (let i = 0; i < transactions.length; i += chunkSize) {
       const chunk = transactions.slice(i, i + chunkSize);
-      const embeddingStrings = chunk.map(tx => 
-        `Merchant: ${displayName}, Category: ${newCategory}, Amount: ${tx.amount}`
-      );
-
-      const embeddings = await generateBatchEmbeddings(embeddingStrings);
+      // Embeddings are deferred to the background embeddingJob.js
+      // to avoid Gemini API rate limits on the free tier.
 
       const ops = chunk.map((tx, idx) => {
         // Collect months for summary updates
@@ -43,7 +40,7 @@ async function reindexTransactions(payeeId, newCategory, sessionId) {
             filter: { _id: tx._id },
             update: { 
               $set: { 
-                embedding: embeddings[idx],
+                embedding: null,
                 embeddingMetadata: {
                   merchant: displayName,
                   category: newCategory

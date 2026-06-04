@@ -54,13 +54,8 @@ async function syncSessionData(sessionId) {
   for (let i = 0; i < staleTransactions.length; i += chunkSize) {
     const chunk = staleTransactions.slice(i, i + chunkSize);
     
-    // Prepare embedding strings
-    const embeddingStrings = chunk.map(tx => 
-      `Merchant: ${tx.payee.displayName}, Category: ${tx.payee.category}, Amount: ${tx.amount}`
-    );
-
-    console.log(`[syncService] Generating embeddings for chunk ${Math.floor(i / chunkSize) + 1}/${Math.ceil(staleTransactions.length / chunkSize)}`);
-    const embeddings = await generateBatchEmbeddings(embeddingStrings);
+    // Embeddings are deferred to the background embeddingJob.js
+    // to avoid Gemini API rate limits on the free tier.
 
     // Prepare bulk updates
     const bulkOps = chunk.map((tx, index) => {
@@ -74,7 +69,7 @@ async function syncSessionData(sessionId) {
           filter: { _id: tx._id },
           update: {
             $set: {
-              embedding: embeddings[index],
+              embedding: null,
               embeddingMetadata: {
                 merchant: tx.payee.displayName,
                 category: tx.payee.category
