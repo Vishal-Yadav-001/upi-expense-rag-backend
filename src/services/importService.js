@@ -14,7 +14,7 @@ const {
  * Main service to process a UPI PDF import.
  * Handles parsing, batch tracking, payee resolution, and transaction deduplication.
  */
-async function processUpiImport({ filePath, originalFileName, source, sessionId, storePii: storePiiOverride }) {
+async function processUpiImport({ filePath, originalFileName, source, sessionId, storePii: storePiiOverride, apiKeyOverride }) {
   console.log("[importService] Starting processing for:", originalFileName);
 
   // 1. Parse the PDF
@@ -92,7 +92,7 @@ async function processUpiImport({ filePath, originalFileName, source, sessionId,
     for (let i = 0; i < embeddingStrings.length; i += chunkSize) {
       const chunk = embeddingStrings.slice(i, i + chunkSize);
       console.log(`[importService] Embedding chunk ${i / chunkSize + 1}/${Math.ceil(embeddingStrings.length / chunkSize)}`);
-      const embeddings = await generateBatchEmbeddings(chunk);
+      const embeddings = await generateBatchEmbeddings(chunk, apiKeyOverride);
       allEmbeddings.push(...embeddings);
     }
 
