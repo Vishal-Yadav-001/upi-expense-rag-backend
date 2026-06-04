@@ -4,6 +4,7 @@ const {
   generateMonthlySummary, 
   generateWeeklySummary 
 } = require("./summaryService");
+const { toMonthStr, toWeekStr } = require("../utils/dateUtils");
 
 /**
  * Synchronizes session data by identifying "stale" transactions 
@@ -65,17 +66,8 @@ async function syncSessionData(sessionId) {
     const bulkOps = chunk.map((tx, index) => {
       // Collect periods for summary updates
       const date = new Date(tx.date);
-      
-      const monthStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-      uniqueMonths.add(monthStr);
-
-      const d = new Date(date);
-      d.setHours(0, 0, 0, 0);
-      const day = d.getDay();
-      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-      const monday = new Date(d.setDate(diff));
-      const weekStr = monday.toISOString().split("T")[0];
-      uniqueWeeks.add(weekStr);
+      uniqueMonths.add(toMonthStr(date));
+      uniqueWeeks.add(toWeekStr(date));
 
       return {
         updateOne: {
