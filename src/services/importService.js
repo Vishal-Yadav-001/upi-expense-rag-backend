@@ -3,7 +3,8 @@ const ingestUpiPdf = require("./upiIngestionService");
 const Transaction = require("../models/Transaction");
 const ImportBatch = require("../models/ImportBatch");
 const Payee = require("../models/Payee");
-const { maskName, normalizeName } = require("./payeeService");
+const { normalizeName } = require("./payeeService");
+const { maskName } = require("./maskingService");
 const { generateBatchEmbeddings } = require("./embeddingService");
 const { 
   generateMonthlySummary, 

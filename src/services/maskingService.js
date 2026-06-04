@@ -31,20 +31,9 @@ function maskName(name) {
     .join(" ");
 }
 
-/**
- * Masks PII like account numbers or VPA IDs.
- * (e.g., "12345678" -> "****5678")
- */
-function maskPII(str, visibleChars = 4) {
-  if (!str) return "";
-  if (str.length <= visibleChars) return "*".repeat(str.length);
-  const visiblePart = str.slice(-visibleChars);
-  return "*".repeat(str.length - visibleChars) + visiblePart;
-}
 
 module.exports = {
   normalize,
   hash,
   maskName,
-  maskPII,
 };

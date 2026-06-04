@@ -1,4 +1,4 @@
-const { normalize, maskName } = require("./maskingService");
+const { normalize } = require("./maskingService");
 
 const MERCHANT_KEYWORDS = [
   "limited", "ltd", "pvt", "corp", "inc", "services", "solutions",
@@ -63,5 +63,4 @@ async function updatePayeeConfidence(payee, category, signal = "AUTO") {
 module.exports = {
   updatePayeeConfidence,
   normalizeName: normalize,
-  maskName,
 };

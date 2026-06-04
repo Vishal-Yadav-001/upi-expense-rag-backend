@@ -18,5 +18,4 @@ function assertSupportedPdfSource(source) {
 module.exports = {
   resolvePdfSource,
   assertSupportedPdfSource,
-  SUPPORTED_PDF_SOURCE,
 };

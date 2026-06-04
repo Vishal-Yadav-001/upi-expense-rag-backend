@@ -74,17 +74,6 @@ async function generateWeeklySummary(sessionId, weekStr) {
   return updateSummary(sessionId, "WEEKLY", weekStr, startDate, endDate);
 }
 
-/**
- * Generates or updates a daily summary.
- * @param {string} sessionId
- * @param {string} dateStr - Date in "YYYY-MM-DD" format.
- */
-async function generateDailySummary(sessionId, dateStr) {
-  const startDate = new Date(dateStr);
-  const endDate = new Date(startDate);
-  endDate.setDate(startDate.getDate() + 1);
-  return updateSummary(sessionId, "DAILY", dateStr, startDate, endDate);
-}
 
 async function getSummaries({ sessionId, type = "MONTHLY", limit = 12 }) {
   const summaries = await FinancialSummary.find({ sessionId, type })
@@ -107,6 +96,5 @@ async function getSummaries({ sessionId, type = "MONTHLY", limit = 12 }) {
 module.exports = { 
   generateMonthlySummary, 
   generateWeeklySummary, 
-  generateDailySummary,
   getSummaries 
 };
