@@ -108,6 +108,10 @@ const toolDefinitions = [
           enum: ["SUCCESS", "FAILED"],
           description: "Filter by transaction status (optional)",
         },
+        merchantName: {
+          type: Type.STRING,
+          description: "Search for a specific merchant or payee name (optional)",
+        },
         direction: {
           type: Type.STRING,
           enum: ["DEBIT", "CREDIT"],

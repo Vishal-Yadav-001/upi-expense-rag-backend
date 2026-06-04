@@ -104,11 +104,16 @@ async function executeTool(toolName, args = {}) {
 
     case "get_transactions": {
       // Cap at 10 rows - sending 20 transactions to Gemini risks exceeding token budget
-      const { status, direction, fromDate, toDate, limit = 10 } = args;
+      const { status, direction, fromDate, toDate, merchantName, limit = 10 } = args;
 
       const query = { sessionId };
       if (status) query.status = status;
       if (direction) query.direction = direction;
+      if (merchantName) {
+        // Search the raw transaction name for matches
+        query.name = { $regex: merchantName, $options: "i" };
+      }
+      
       if (fromDate || toDate) {
         query.date = {};
         if (fromDate) query.date.$gte = new Date(fromDate);
@@ -125,15 +130,23 @@ async function executeTool(toolName, args = {}) {
         .limit(limit)
         .lean();
 
-      // Return a clean flat shape - drop raw `name` since `payee` covers it
-      return transactions.map((tx) => ({
-        payee: tx.payee?.displayName || tx.name,
-        category: tx.payee?.category || "UNCATEGORIZED",
-        amount: tx.amount,
-        direction: tx.direction,
-        date: new Date(tx.date).toISOString().split("T")[0],
-        status: tx.status,
-      }));
+      let totalSum = 0;
+      const mappedTransactions = transactions.map((tx) => {
+        totalSum += tx.amount;
+        return {
+          payee: tx.payee?.displayName || tx.name,
+          category: tx.payee?.category || "UNCATEGORIZED",
+          amount: tx.amount,
+          direction: tx.direction,
+          date: new Date(tx.date).toISOString().split("T")[0],
+          status: tx.status,
+        };
+      });
+
+      return {
+        totalSumCalculated: totalSum,
+        results: mappedTransactions,
+      };
     }
 
     case "query_database": {
@@ -214,7 +227,16 @@ async function executeTool(toolName, args = {}) {
         },
       ];
 
-      return Transaction.aggregate(pipeline);
+      const results = await Transaction.aggregate(pipeline);
+      let totalSum = 0;
+      results.forEach((r) => {
+        totalSum += r.amount;
+      });
+
+      return {
+        totalSumCalculated: totalSum,
+        results,
+      };
     }
 
     case "get_financial_summary": {
