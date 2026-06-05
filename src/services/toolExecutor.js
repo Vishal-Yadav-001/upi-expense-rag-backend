@@ -35,6 +35,28 @@ function normalizeDate(str) {
   return d.toISOString().split("T")[0];
 }
 
+/**
+ * Converts a human-typed merchant name into a MongoDB-safe regex string
+ * that tolerates the separators UPI PDFs use (dot, dash, underscore, @, space).
+ *
+ * e.g. "super money" → /super[\s.\-_@]+money/i
+ *      matches "Super.money-SUPERFIN@okaxis", "super-money", etc.
+ *
+ * Steps:
+ *  1. Trim whitespace
+ *  2. Escape all regex special chars EXCEPT the space character
+ *  3. Replace one-or-more spaces with a separator group
+ */
+function buildMerchantRegex(name) {
+  const escaped = name
+    .trim()
+    // Escape regex metacharacters (but NOT the space — we handle that next)
+    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    // Replace runs of spaces with a pattern matching any UPI separator
+    .replace(/ +/g, "[\\s.\\-_@]+");
+  return escaped;
+}
+
 async function executeTool(toolName, args = {}) {
   const { sessionId } = args;
 
@@ -111,17 +133,20 @@ async function executeTool(toolName, args = {}) {
       if (status) query.status = status;
       if (direction) query.direction = direction;
       if (merchantName) {
+        // Normalize spaces → UPI separator pattern so "super money" matches "super.money"
+        const merchantRegex = buildMerchantRegex(merchantName);
+
         // Search payees first in case the user renamed the merchant or it's masked
         const matchingPayees = await Payee.find({
           sessionId,
-          displayName: { $regex: merchantName, $options: "i" }
+          displayName: { $regex: merchantRegex, $options: "i" }
         }, "_id").lean();
         
         const payeeIds = matchingPayees.map(p => p._id);
         
         // Match either the raw transaction name OR any matching payee reference
         query.$or = [
-          { name: { $regex: merchantName, $options: "i" } },
+          { name: { $regex: merchantRegex, $options: "i" } },
           { payee: { $in: payeeIds } }
         ];
       }
@@ -272,9 +297,11 @@ async function executeTool(toolName, args = {}) {
 
     case "set_user_budget": {
       const { amount } = args;
+      // sessionId in this system = Clerk userId (decoded.sub from JWT)
+      // Store/update the budget on the User document keyed by clerkId
       const user = await User.findOneAndUpdate(
-        { sessionId: sessionId },
-        { monthlyBudget: amount },
+        { clerkId: sessionId },
+        { monthlyBudget: amount, clerkId: sessionId },
         { new: true, upsert: true }
       );
       return { success: true, newBudget: user.monthlyBudget };

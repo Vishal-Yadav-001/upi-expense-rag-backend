@@ -3,27 +3,33 @@ const crypto = require("crypto");
 
 const userSchema = new mongoose.Schema(
   {
+    // Legacy field — optional for Clerk users
     name: {
       type: String,
-      required: true,
       trim: true,
     },
+    // Legacy field — optional for Clerk users; sparse so Clerk-only docs don't collide
     email: {
       type: String,
-      required: true,
       unique: true,
+      sparse: true,
       lowercase: true,
       trim: true,
     },
+    // Legacy field — optional for Clerk users
     password: {
       type: String,
-      required: true,
       minlength: 6,
       select: false,
     },
     monthlyBudget: {
       type: Number,
       default: 0,
+    },
+    clerkId: {
+      type: String,
+      index: true,
+      sparse: true, // optional: not all rows may have it (e.g. mock admin)
     },
   },
   {

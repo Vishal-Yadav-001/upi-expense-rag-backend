@@ -110,7 +110,7 @@ const toolDefinitions = [
         },
         merchantName: {
           type: Type.STRING,
-          description: "Search for a specific merchant or payee name (optional)",
+          description: "Search for a specific merchant or payee name. This searches the raw UPI transaction name (e.g. 'Super.money', 'Swiggy', 'HDFC') as well as the resolved payee display name. Use the exact brand name as it appears in UPI (optional).",
         },
         direction: {
           type: Type.STRING,
@@ -127,7 +127,7 @@ const toolDefinitions = [
         },
         limit: {
           type: Type.NUMBER,
-          description: "Maximum number of transactions to return (default 20)",
+          description: "Maximum number of transactions to return (default 10)",
         },
       },
       required: [],
@@ -192,7 +192,7 @@ const toolDefinitions = [
         type: {
           type: Type.STRING,
           enum: ["MONTHLY", "WEEKLY"],
-          description: "The aggregation level (default: MONTHLY)",
+          description: "The aggregation level — MONTHLY for monthly totals, WEEKLY for week-by-week breakdown (default: MONTHLY)",
         },
         limit: {
           type: Type.NUMBER,
