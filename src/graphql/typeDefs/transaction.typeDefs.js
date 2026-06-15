@@ -31,6 +31,7 @@ const transactionTypeDefs = gql`
       fromDate: String
       toDate: String
       limit: Int
+      offset: Int
     ): [Transaction]
 
     transactionsByPayee(

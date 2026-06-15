@@ -5,7 +5,7 @@ const { hash } = require("../../services/maskingService");
 const transactionResolvers = {
   Query: {
     transactions: async (_, args, context) => {
-      const { status, direction, fromDate, toDate, limit = 50 } = args;
+      const { status, direction, fromDate, toDate, limit = 50, offset = 0 } = args;
 
       const query = { sessionId: context.sessionId };
 
@@ -26,6 +26,7 @@ const transactionResolvers = {
       return Transaction.find(query)
         .populate("payee")
         .sort({ date: -1 }) // latest first
+        .skip(offset)
         .limit(limit)
         .lean();
     },
