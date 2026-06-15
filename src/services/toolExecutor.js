@@ -8,7 +8,7 @@ const Transaction = require("../models/Transaction");
 const Payee = require("../models/Payee");
 const User = require("../models/User");
 const { generateEmbedding } = require("./embeddingService");
-const FinancialSummary = require("../models/FinancialSummary");
+const { getSummaries } = require("./summaryService");
 
 /**
  * Executes the tool Gemini chose and returns structured data.
@@ -127,11 +127,19 @@ async function executeTool(toolName, args = {}) {
 
     case "get_transactions": {
       // Cap at 10 rows - sending 20 transactions to Gemini risks exceeding token budget
-      const { status, direction, fromDate, toDate, merchantName, limit = 10 } = args;
+      const { status, direction, fromDate, toDate, merchantName, category, limit = 10 } = args;
 
       const query = { sessionId };
       if (status) query.status = status;
       if (direction) query.direction = direction;
+      
+      if (category) {
+        const matchingPayees = await Payee.find({
+          category: { $regex: new RegExp(`^${category}$`, "i") }
+        }, "_id").lean();
+        query.payee = { $in: matchingPayees.map(p => p._id) };
+      }
+
       if (merchantName) {
         // Normalize spaces → UPI separator pattern so "super money" matches "super.money"
         const merchantRegex = buildMerchantRegex(merchantName);
@@ -281,18 +289,7 @@ async function executeTool(toolName, args = {}) {
 
     case "get_financial_summary": {
       const { type = "MONTHLY", limit = 6 } = args;
-      const summaries = await FinancialSummary.find({ sessionId, type })
-        .sort({ period: -1 })
-        .limit(limit)
-        .lean();
-
-      return summaries.map(s => ({
-        period: s.period,
-        totalDebit: s.data.totalDebit,
-        totalCredit: s.data.totalCredit,
-        transactionCount: s.data.transactionCount,
-        topCategories: s.data.topCategories
-      }));
+      return getSummaries({ sessionId, type, limit });
     }
 
     case "set_user_budget": {

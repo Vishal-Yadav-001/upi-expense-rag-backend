@@ -112,6 +112,10 @@ const toolDefinitions = [
           type: Type.STRING,
           description: "Search for a specific merchant or payee name. This searches the raw UPI transaction name (e.g. 'Super.money', 'Swiggy', 'HDFC') as well as the resolved payee display name. Use the exact brand name as it appears in UPI (optional).",
         },
+        category: {
+          type: Type.STRING,
+          description: "Filter transactions by a specific category like 'Food', 'Family', 'Travel', 'Utilities'. Use this when the user asks for transactions within a category. Case-insensitive. (optional)",
+        },
         direction: {
           type: Type.STRING,
           enum: ["DEBIT", "CREDIT"],

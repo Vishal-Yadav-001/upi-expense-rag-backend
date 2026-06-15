@@ -233,7 +233,7 @@ IMPORTANT EXPLANATION: If you use this relative time shifting, you MUST briefly 
     });
 
     return {
-      answer: finalResponse.text,
+      answer: finalResponse.text || "I processed the data but couldn't generate a text response.",
       toolsUsed,
       data: JSON.stringify(allData),
     };
